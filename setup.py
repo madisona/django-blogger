@@ -13,6 +13,7 @@ setup(
 
     long_description=open("README.txt", 'r').read(),
     packages=find_packages(),
+    include_package_data=True,
     test_requirements=['django'],
     zip_safe=False,
     classifiers=[
