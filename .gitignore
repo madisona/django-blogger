@@ -8,3 +8,4 @@ dist/*
 *.egg-info
 *.pyc
 *.pyo
+.DS_Store
