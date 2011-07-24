@@ -3,6 +3,7 @@ import urllib
 from datetime import datetime, timedelta
 from xml.dom.minidom import parse
 
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.template.defaultfilters import striptags, slugify
@@ -143,26 +144,19 @@ class BloggerPost(models.Model):
 
     @property
     def wordcount(self):
-        return len(striptags(self.content).split(' '))
+        return len(striptags(self.content).split())
 
     @property
     def remaining_words(self):
-        count = self.wordcount - self.blog.teaser_length
-        if count <= 0:
-            return 0
-        else:
-            return count
+        return max(self.wordcount - self.blog.teaser_length, 0)
 
     @property
     def teaser(self):
-        return ' '.join(striptags(self.content).split(' ')[:self.blog.teaser_length])
+        return ' '.join(striptags(self.content).split()[:self.blog.teaser_length])
 
     @property
     def list_content(self):
-        if self.blog.show_teaser:
-            return self.teaser
-        else:
-            return self.content
+        return self.teaser if self.blog.show_teaser else self.content
 
     @models.permalink
     def get_absolute_url(self):
@@ -171,7 +165,8 @@ class BloggerPost(models.Model):
 
     @staticmethod
     def get_latest_posts():
-        return BloggerPost.objects.all()[:5]
+        post_count = settings.BLOGGER_OPTIONS.get('RECENT_POST_COUNT', 5)
+        return BloggerPost.objects.all()[:post_count]
 
     class Meta(object):
         ordering = ('-published', '-updated')
