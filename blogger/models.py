@@ -140,6 +140,7 @@ class BloggerPost(models.Model):
         http://code.google.com/apis/blogger/docs/2.0/developers_guide_protocol.html#RetrievingWithoutQuery
         The published & updated fields are converted to something mysql friendly
         """
+        # todo: Do we want to track oldest updated time and delete any posts we have in db newer than the oldest post in feed that aren't in new feed data?
         post_id = get_content_by_tagname(entry, 'id')
         author_xml = entry.getElementsByTagName('author')[0]
         links = get_links(entry)

@@ -14,7 +14,7 @@ setup(
     long_description=open("README.txt", 'r').read(),
     packages=find_packages(),
     include_package_data=True,
-    test_requirements=['django', 'mock'],
+    test_requirements=['django', 'mock', 'django-debug-toolbar'],
     zip_safe=False,
     classifiers=[
         "Development Status :: 4 - Beta",
