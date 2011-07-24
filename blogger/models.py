@@ -1,5 +1,5 @@
 
-import urllib
+import urllib2
 from datetime import datetime, timedelta
 from xml.dom.minidom import parse
 
@@ -18,6 +18,12 @@ def get_blog_id():
         return settings.BLOGGER_OPTIONS['BLOG_ID']
     except (AttributeError, KeyError):
         raise ImproperlyConfigured('Your settings Must have a "BLOG_ID" in its "BLOGGER_OPTIONS"')
+
+def get_content_by_tagname(xml_data, tagname):
+    try:
+        return xml_data.getElementsByTagName(tagname)[0].childNodes[0].data
+    except IndexError:
+        pass
 
 class BloggerBlog(models.Model):
     """
@@ -49,21 +55,6 @@ class BloggerBlog(models.Model):
     def get_absolute_url(self):
         return ('blogger:home',)
 
-    def sync_posts(self, forced=False):
-        new_posts = 0
-        if forced or self.needs_synced:
-            _posts = list()
-            xml = parse(urllib.urlopen(BloggerBlog._post_url % self.blog_id))
-            entries = xml.getElementsByTagName('entry')
-            for post in entries:
-                post, created = BloggerPost.from_xml(post, self)
-                if created: new_posts += 1
-            self.last_synced = datetime.now()
-            self.save()
-            return new_posts
-        else:
-            return False
-
     @property
     def needs_synced(self):
         return bool(self.last_synced + timedelta(hours=self.minimum_synctime) < datetime.now())
@@ -71,6 +62,17 @@ class BloggerBlog(models.Model):
     @property
     def total_posts(self):
         return BloggerPost.objects.all().filter(blog=self).count()
+
+    def sync_posts(self, forced=False):
+        new_posts = 0
+        if forced or self.needs_synced:
+            xml = parse(urllib2.urlopen(BloggerBlog._post_url % self.blog_id))
+            for entry in xml.getElementsByTagName('entry'):
+                created = BloggerPost.from_xml(entry, self)
+                if created: new_posts += 1
+            self.last_synced = datetime.now()
+            self.save()
+            return new_posts
 
     @staticmethod
     def get_blog():
@@ -95,52 +97,15 @@ class BloggerPost(models.Model):
 
     objects = models.Manager()
 
+    class Meta(object):
+        ordering = ('-published', '-updated')
+
     def __unicode__(self):
         return unicode(self.title)
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.title)
         super(BloggerPost, self).save(*args, **kwargs)
-
-    @staticmethod
-    def from_xml(entry, _blog):
-        """ Creates a new BloggerPost from input XML. See the below link for schema:
-        http://code.google.com/apis/blogger/docs/2.0/developers_guide_protocol.html#RetrievingWithoutQuery
-        The published & updated fields are converted to something mysql friendly
-        """
-
-        def get_content(tagname, xml_data=entry):
-            try:
-                return xml_data.getElementsByTagName(tagname)[0].childNodes[0].data
-            except IndexError:
-                return None
-
-        author_xml = entry.getElementsByTagName('author')[0]
-        links = get_links(entry)
-
-        created = False
-        post_data = dict(
-            blog=_blog,
-            post_id=get_content('id'),
-            published=get_content('published').replace('T', ' ')[:-6],
-            updated=get_content('updated').replace('T', ' ')[:-6],
-            title=get_content('title'),
-            content=get_content('content'),
-            content_type=entry.getElementsByTagName('content')[0].getAttribute('type'),
-            author=get_content('name', author_xml),
-            link_edit=links['edit'],
-            link_self=links['self'],
-            link_alternate=links['alternate'],
-        )
-        try:
-            post = BloggerPost.objects.get(post_id=get_content('id'))
-        except BloggerPost.DoesNotExist:
-            created = True
-
-        post = BloggerPost(**post_data)
-        post.save()
-
-        return [post, created]
 
     @property
     def wordcount(self):
@@ -168,7 +133,35 @@ class BloggerPost(models.Model):
         post_count = settings.BLOGGER_OPTIONS.get('RECENT_POST_COUNT', 5)
         return BloggerPost.objects.all()[:post_count]
 
-    class Meta(object):
-        ordering = ('-published', '-updated')
+    @staticmethod
+    def from_xml(entry, _blog):
+        """
+        Creates a new BloggerPost from input XML. See the below link for schema:
+        http://code.google.com/apis/blogger/docs/2.0/developers_guide_protocol.html#RetrievingWithoutQuery
+        The published & updated fields are converted to something mysql friendly
+        """
+        post_id = get_content_by_tagname(entry, 'id')
+        author_xml = entry.getElementsByTagName('author')[0]
+        links = get_links(entry)
 
+        post_data = dict(
+            blog=_blog,
+            published=get_content_by_tagname(entry, 'published').replace('T', ' ')[:-6], # taking off GMT offset
+            updated=get_content_by_tagname(entry, 'updated').replace('T', ' ')[:-6], # taking off GMT offset
+            title=get_content_by_tagname(entry, 'title'),
+            content=get_content_by_tagname(entry, 'content'),
+            content_type=entry.getElementsByTagName('content')[0].getAttribute('type'),
+            author=get_content_by_tagname(author_xml, 'name'),
+            link_edit=links['edit'],
+            link_self=links['self'],
+            link_alternate=links['alternate'],
+        )
+        post, created = BloggerPost.objects.get_or_create(
+            post_id=post_id,
+            defaults=post_data,
+        )
+        if not created:
+            post = BloggerPost(post_id=post_id, **post_data)
+            post.save()
 
+        return created

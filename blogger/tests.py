@@ -4,6 +4,7 @@ import datetime
 from xml.dom.minidom import parse
 from StringIO import StringIO
 
+import mock
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
@@ -14,16 +15,16 @@ from blogger import models
 class GeneralModelTests(TestCase):
 
     def setUp(self):
-        self.sample_xml = """<?xml version='1.0' encoding='UTF-8'?>
+        self.sample_xml = parse(StringIO("""<?xml version='1.0' encoding='UTF-8'?>
         <feed>
             <link rel='link1' href='http://googleblog.blogspot.com/' />
             <link rel='link2' href='http://google.com/' />
+            <author>Aaron Madison</author>
         </feed>
-        """
+        """))
 
     def test_get_links_returns_dictionary_of_links(self):
-        xml = parse(StringIO(self.sample_xml))
-        links = models.get_links(xml)
+        links = models.get_links(self.sample_xml)
         self.assertEqual({
             'link1': 'http://googleblog.blogspot.com/',
             'link2': 'http://google.com/',
@@ -52,6 +53,14 @@ class GeneralModelTests(TestCase):
             models.get_blog_id()
 
         settings.BLOGGER_OPTIONS = existing_blogger_options
+
+    def test_gets_xml_entity_content_by_tagname(self):
+        author = models.get_content_by_tagname(self.sample_xml, 'author')
+        self.assertEqual("Aaron Madison", author)
+
+    def test_get_content_by_tagname_returns_none_when_no_items_found(self):
+        not_found = models.get_content_by_tagname(self.sample_xml, 'nothing')
+        self.assertEqual(None, not_found)
 
 class BloggerBlogModelTests(TestCase):
 
@@ -95,6 +104,119 @@ class BloggerBlogModelTests(TestCase):
         self.assertEqual(blog, models.BloggerBlog.get_blog())
 
         settings.BLOGGER_OPTIONS = existing_blogger_options
+
+    def test_sync_posts_returns_none_when_blog_doesnt_need_synced_and_is_not_forced(self):
+        now = datetime.datetime.now()
+        blog = models.BloggerBlog(last_synced=now - datetime.timedelta(hours=9), minimum_synctime=10,)
+        self.assertEqual(None, blog.sync_posts())
+
+    def test_sync_posts_should_open_url_for_blog_post(self):
+        blog = models.BloggerBlog(blog_id=123)
+        with mock.patch('urllib2.urlopen') as urlopen:
+            urlopen.return_value = StringIO("""<?xml version='1.0' encoding='UTF-8'?><a />""")
+            blog.sync_posts(forced=True)
+        urlopen.assert_called_once_with("http://www.blogger.com/feeds/123/posts/default")
+
+    @mock.patch('urllib2.urlopen')
+    def test_sync_posts_should_create_post_from_xml_for_each_entry(self, urlopen):
+        urlopen.return_value = StringIO("""<?xml version='1.0' encoding='UTF-8'?>
+            <feed>
+            <entry>
+                <id>tag:blogger.com,1999:blog-10861780</id>
+                <title>Post One</title>
+                <author><name>Aaron Madison</name></author>
+                <published>2011-07-24T13:15:30.000-07:00</published>
+                <updated>2011-07-24T13:15:30.000-07:00</updated>
+                <content type="html">This is Post One</content>
+                <link rel="edit" href="example.com/edit/1" />
+                <link rel="self" href="example.com/self/1" />
+                <link rel="alternate" href="example.com/alternate/1" />
+            </entry>
+            <entry>
+                <id>tag:blogger.com,1999:blog-10861700</id>
+                <title>Post Two</title>
+                <author><name>Aaron Madison</name></author>
+                <published>2011-07-24T13:15:30.000-07:00</published>
+                <updated>2011-07-24T13:15:30.000-07:00</updated>
+                <content type="html">This is Post Two</content>
+                <link rel="edit" href="example.com/edit/2" />
+                <link rel="self" href="example.com/self/2" />
+                <link rel="alternate" href="example.com/alternate/2" />
+            </entry>
+            </feed>
+        """)
+        last_synced = datetime.datetime(2011, 5, 1)
+        blog = models.BloggerBlog.objects.create(blog_id='123', last_synced=last_synced)
+        self.assertEqual(0, blog.total_posts) # start with zero posts
+
+        new_posts = blog.sync_posts()
+        saved_blog = models.BloggerBlog.objects.get(pk='123')
+        self.assertEqual(2, new_posts) # new posts returned
+
+        self.assertEqual(2, saved_blog.total_posts) # sync saved two posts
+        self.assertGreater(saved_blog.last_synced, last_synced) # updates last_synced_time
+
+        # content parsed from xml properly
+        post1 = models.BloggerPost.objects.get(pk='tag:blogger.com,1999:blog-10861780')
+        self.assertEqual(saved_blog, post1.blog)
+        self.assertEqual("tag:blogger.com,1999:blog-10861780", post1.post_id)
+        self.assertEqual("Post One", post1.title)
+        self.assertEqual("Aaron Madison", post1.author)
+        self.assertEqual("This is Post One", post1.content)
+        self.assertEqual("html", post1.content_type)
+        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post1.published)
+        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post1.updated)
+        self.assertEqual("example.com/edit/1", post1.link_edit)
+        self.assertEqual("example.com/self/1", post1.link_self)
+        self.assertEqual("example.com/alternate/1", post1.link_alternate)
+
+        # content parsed from xml properly
+        post2 = models.BloggerPost.objects.get(pk='tag:blogger.com,1999:blog-10861700')
+        self.assertEqual(saved_blog, post2.blog)
+        self.assertEqual("tag:blogger.com,1999:blog-10861700", post2.post_id)
+        self.assertEqual("Post Two", post2.title)
+        self.assertEqual("Aaron Madison", post2.author)
+        self.assertEqual("This is Post Two", post2.content)
+        self.assertEqual("html", post2.content_type)
+        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post2.published)
+        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post2.updated)
+        self.assertEqual("example.com/edit/2", post2.link_edit)
+        self.assertEqual("example.com/self/2", post2.link_self)
+        self.assertEqual("example.com/alternate/2", post2.link_alternate)
+
+    @mock.patch('urllib2.urlopen')
+    def test_sync_posts_updated_entry_when_post_id_already_exists(self, urlopen):
+        urlopen.return_value = StringIO("""<?xml version='1.0' encoding='UTF-8'?>
+            <feed>
+            <entry>
+                <id>tag:blogger.com,1999:blog-10861780</id>
+                <title>Post One</title>
+                <author><name>Aaron Madison</name></author>
+                <published>2011-07-24T13:15:30.000-07:00</published>
+                <updated>2011-07-24T13:15:30.000-07:00</updated>
+                <content type="html">This is an updated post.</content>
+                <link rel="edit" href="example.com/edit/1" />
+                <link rel="self" href="example.com/self/1" />
+                <link rel="alternate" href="example.com/alternate/1" />
+            </entry>
+            </feed>
+        """)
+        blog = models.BloggerBlog.objects.create(blog_id='123')
+        models.BloggerPost.objects.create(
+            blog=blog,
+            post_id="tag:blogger.com,1999:blog-10861780",
+            title="Old Title",
+            published=datetime.datetime.now(),
+            updated=datetime.datetime.now(),
+            content="Old Post Content",
+        )
+
+        self.assertEqual(1, models.BloggerPost.objects.all().count()) # start with one post
+        blog.sync_posts(forced=True)
+        self.assertEqual(1, models.BloggerPost.objects.all().count()) # updated same post
+        updated_post = models.BloggerPost.objects.get(post_id="tag:blogger.com,1999:blog-10861780")
+        self.assertEqual("Post One", updated_post.title)
+        self.assertEqual("This is an updated post.", updated_post.content)
 
 class BloggerPostModelTests(TestCase):
 
