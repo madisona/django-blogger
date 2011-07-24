@@ -9,6 +9,6 @@ from blogger import views
 urlpatterns = patterns('blogger.views',
     url(r'^blog/(?P<year>\d{4})/$', views.ArchiveYear.as_view(), name='archive_year'),
     url(r'^blog/(?P<year>\d{4})/(?P<month>\w+)/$', views.ArchiveMonth.as_view(), name='archive_month'),
-    url(r'^blog/(?P<slug>[\w-]+)/$', views.PostDetail.as_view(), name='post'),
+    url(r'^blog/(?P<slug>[\w/-]+)/$', views.PostDetail.as_view(), name='post'),
     url(r'^$', views.PostList.as_view(), name='home'),
 )

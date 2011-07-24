@@ -25,6 +25,11 @@ def get_content_by_tagname(xml_data, tagname):
     except IndexError:
         pass
 
+def get_timestamp_from_tag(xml_data, tagname):
+    # Date is in ISO 8601 format... we'll ignore the microseconds and timezone offset
+    tag_timestamp = get_content_by_tagname(xml_data, tagname)
+    return datetime.strptime(tag_timestamp[:-10], "%Y-%m-%dT%H:%M:%S")
+
 class BloggerBlog(models.Model):
     """
     Data about your blogger blog and sync/view options.
@@ -104,7 +109,7 @@ class BloggerPost(models.Model):
         return unicode(self.title)
 
     def save(self, *args, **kwargs):
-        self.slug = slugify(self.title)
+        self.slug = "%s/%s" % (self.published.strftime("%Y/%m"), slugify(self.title))
         super(BloggerPost, self).save(*args, **kwargs)
 
     @property
@@ -125,12 +130,11 @@ class BloggerPost(models.Model):
 
     @models.permalink
     def get_absolute_url(self):
-        title = slugify(self.title)
-        return ('blogger:post', [title])
+        return ('blogger:post', [self.slug])
 
     @staticmethod
     def get_latest_posts():
-        post_count = settings.BLOGGER_OPTIONS.get('RECENT_POST_COUNT', 5)
+        post_count = settings.BLOGGER_OPTIONS.get('recent_post_count', 5)
         return BloggerPost.objects.all()[:post_count]
 
     @staticmethod
@@ -147,8 +151,8 @@ class BloggerPost(models.Model):
 
         post_data = dict(
             blog=_blog,
-            published=get_content_by_tagname(entry, 'published').replace('T', ' ')[:-6], # taking off GMT offset
-            updated=get_content_by_tagname(entry, 'updated').replace('T', ' ')[:-6], # taking off GMT offset
+            published=get_timestamp_from_tag(entry, 'published'),
+            updated=get_timestamp_from_tag(entry, 'updated'),
             title=get_content_by_tagname(entry, 'title'),
             content=get_content_by_tagname(entry, 'content'),
             content_type=entry.getElementsByTagName('content')[0].getAttribute('type'),

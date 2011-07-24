@@ -30,8 +30,10 @@ class PostDetail(generic.DetailView):
 class ArchiveMonth(generic.MonthArchiveView):
     model = BloggerPost
     date_field = 'published'
+    month_format = "%m"
 
 class ArchiveYear(generic.YearArchiveView):
     model = BloggerPost
     date_field = 'published'
     make_object_list = True
+    month_format = "%m"

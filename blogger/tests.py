@@ -220,20 +220,21 @@ class BloggerBlogModelTests(TestCase):
 
 class BloggerPostModelTests(TestCase):
 
-    def test_uses_pk_and_title_slug_in_absolute_url(self):
-        post = models.BloggerPost(title="A Blog post title")
-        expected_url = reverse("blogger:post", kwargs=dict(slug='a-blog-post-title'))
+    def test_uses_slug_in_absolute_url(self):
+        post = models.BloggerPost(slug="2011/07/a-blog-post-title")
+        expected_url = reverse("blogger:post", kwargs=dict(slug='2011/07/a-blog-post-title'))
         self.assertEqual(expected_url, post.get_absolute_url())
 
-    def test_sets_slug_field_from_title_on_save(self):
+    def test_sets_slug_field_from_published_date_and_title_on_save(self):
         blog = models.BloggerBlog()
+        now = datetime.datetime.now()
         post = models.BloggerPost.objects.create(
             blog=blog,
             title="A blog post title",
-            published=datetime.datetime.now(),
+            published=now,
             updated=datetime.datetime.now(),
         )
-        self.assertEqual('a-blog-post-title', post.slug)
+        self.assertEqual('%s/a-blog-post-title' % (now.strftime("%Y/%m")), post.slug)
 
     def test_word_count_returns_word_count_without_tags(self):
         # Note: When two tags but against each other:
@@ -286,7 +287,7 @@ class BloggerPostModelTests(TestCase):
     def test_get_latest_posts_returns_number_of_posts_defined_in_settings(self):
         now = datetime.datetime.now()
         existing_blogger_options = copy.copy(settings.BLOGGER_OPTIONS)
-        settings.BLOGGER_OPTIONS = {'RECENT_POST_COUNT': '2'}
+        settings.BLOGGER_OPTIONS = {'recent_post_count': '2'}
 
         blog = models.BloggerBlog.objects.create(pk='1', name="My Blog")
         models.BloggerPost.objects.create(blog=blog, post_id='1', title="post 1", published=now - datetime.timedelta(hours=3), updated=now)
