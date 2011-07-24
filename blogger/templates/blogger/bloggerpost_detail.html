@@ -10,7 +10,7 @@
 {% if config.disqus_forum %}
 {% block js %}
     {{ block.super }}
-    {% include "blogger/disqus.html" %}
-    {% include "blogger/disqus_comments.html" %}
+    {% include "blogger/disqus/disqus.html" %}
+    {% include "blogger/disqus/disqus_comments.html" %}
 {% endblock %}
 {% endif %}
