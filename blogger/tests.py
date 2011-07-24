@@ -53,6 +53,49 @@ class GeneralModelTests(TestCase):
 
         settings.BLOGGER_OPTIONS = existing_blogger_options
 
+class BloggerBlogModelTests(TestCase):
+
+    def test_blog_absolute_url_is_blogger_home_page(self):
+        blog = models.BloggerBlog()
+        expected_url = reverse("blogger:home")
+        self.assertEqual(expected_url, blog.get_absolute_url())
+
+    def test_uses_name_as_string_representation(self):
+        blog = models.BloggerBlog(name="My Blog")
+        self.assertEqual("My Blog", str(blog))
+
+    def test_does_not_need_synced_when_last_sync_within_minimum_sync_time(self):
+        now = datetime.datetime.now()
+        blog = models.BloggerBlog(
+            last_synced=now - datetime.timedelta(hours=9),
+            minimum_synctime=10,
+        )
+        self.assertFalse(blog.needs_synced)
+
+    def test_needs_synced_when_last_sync_not_within_minimum_sync_time(self):
+        now = datetime.datetime.now()
+        blog = models.BloggerBlog(
+            last_synced=now - datetime.timedelta(hours=11),
+            minimum_synctime=10,
+        )
+        self.assertTrue(blog.needs_synced)
+
+    def test_total_posts_returns_count_of_blog_posts(self):
+        now = datetime.datetime.now()
+        blog = models.BloggerBlog.objects.create()
+        models.BloggerPost.objects.create(blog=blog, post_id=1, title="post 1", published=now, updated=now)
+        models.BloggerPost.objects.create(blog=blog, post_id=2, title="post 2", published=now, updated=now)
+        self.assertEqual(2, blog.total_posts)
+
+    def test_get_blog_gets_blog_by_pk(self):
+        existing_blogger_options = copy.copy(settings.BLOGGER_OPTIONS)
+        settings.BLOGGER_OPTIONS = {'BLOG_ID': '123'}
+
+        blog = models.BloggerBlog.objects.create(pk='123', name="My Blog")
+        self.assertEqual(blog, models.BloggerBlog.get_blog())
+
+        settings.BLOGGER_OPTIONS = existing_blogger_options
+
 class BloggerPostModelTests(TestCase):
 
     def test_uses_pk_and_title_slug_in_absolute_url(self):

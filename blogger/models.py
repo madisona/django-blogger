@@ -65,17 +65,11 @@ class BloggerBlog(models.Model):
 
     @property
     def needs_synced(self):
-        if self.last_synced+timedelta(hours=self.minimum_synctime) < datetime.now():
-            return False
-        return True
+        return bool(self.last_synced + timedelta(hours=self.minimum_synctime) < datetime.now())
 
     @property
     def total_posts(self):
         return BloggerPost.objects.all().filter(blog=self).count()
-
-    @property
-    def posts(self):
-        return BloggerPost.objects.all().filter(blog=self)
 
     @staticmethod
     def get_blog():
