@@ -2,4 +2,15 @@
 
 {% block content %}
     {% include "blogger/post_content.html" %}
+    {% if config.disqus_forum %}
+    <div id="disqus_thread"></div>
+    {% endif %}
 {% endblock %}
+
+{% if config.disqus_forum %}
+{% block js %}
+    {{ block.super }}
+    {% include "blogger/disqus.html" %}
+    {% include "blogger/disqus_comment_count.html" %}
+{% endblock %}
+{% endif %}

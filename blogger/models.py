@@ -15,9 +15,9 @@ def get_links(xml):
 def get_blog_id():
     from django.conf import settings
     try:
-        return settings.BLOGGER_OPTIONS['BLOG_ID']
+        return settings.BLOGGER_OPTIONS['blog_id']
     except (AttributeError, KeyError):
-        raise ImproperlyConfigured('Your settings Must have a "BLOG_ID" in its "BLOGGER_OPTIONS"')
+        raise ImproperlyConfigured('Your settings Must have a "blog_id" in its "BLOGGER_OPTIONS"')
 
 def get_content_by_tagname(xml_data, tagname):
     try:

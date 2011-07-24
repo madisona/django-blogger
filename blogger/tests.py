@@ -33,7 +33,7 @@ class GeneralModelTests(TestCase):
     def test_gets_blog_id_from_settings(self):
         existing_blogger_options = copy.copy(settings.BLOGGER_OPTIONS)
         blog_id = '10861780'
-        settings.BLOGGER_OPTIONS = {'BLOG_ID': blog_id}
+        settings.BLOGGER_OPTIONS = {'blog_id': blog_id}
 
         self.assertEqual(blog_id, models.get_blog_id())
         settings.BLOGGER_OPTIONS = existing_blogger_options
@@ -98,7 +98,7 @@ class BloggerBlogModelTests(TestCase):
 
     def test_get_blog_gets_blog_by_pk(self):
         existing_blogger_options = copy.copy(settings.BLOGGER_OPTIONS)
-        settings.BLOGGER_OPTIONS = {'BLOG_ID': '123'}
+        settings.BLOGGER_OPTIONS = {'blog_id': '123'}
 
         blog = models.BloggerBlog.objects.create(pk='123', name="My Blog")
         self.assertEqual(blog, models.BloggerBlog.get_blog())

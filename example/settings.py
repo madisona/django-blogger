@@ -57,7 +57,9 @@ INSTALLED_APPS = (
 INTERNAL_IPS = ('127.0.0.1',)
 
 BLOGGER_OPTIONS = {
-    'BLOG_ID': '10861780', # official google blog
-    'RECENT_POSTS': 10,
-    'TEASER_LENGTH': 80,
+    'blog_id': '10861780', # official google blog
+    'recent_posts': 10,
+    'teaser_length': 80,
+    'minimum_synctime': 12, # minimum hours between automatic sync of blog
+    'disqus_forum': '', # add your disqus shortname here if you want disqus
 }

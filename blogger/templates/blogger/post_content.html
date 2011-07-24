@@ -1,6 +1,13 @@
 <div class="blogpost">
-    <h3><a href="{{ object.get_absolute_url }}">{{ object.title }}</a></h3>
-    <div class="postcontent">
+    <h2 class="date-header">{{ object.published|date:"l, F j, Y" }}<h2>
+    <h3 class="post-title">{{ object.title }}</h3>
+    <div class="post-body">
     {{ object.content|safe }}
     </div>
+    <p class="post-footer">
+      posted by {{ object.author }} at <a href="{{ object.get_absolute_url }}">{{ object.published|date:"P" }}</a>
+        {% if config.disqus_forum %}
+        | <a href="{{ object.get_absolute_url }}#disqus_thread" data-disqus-identifier="{{ object.slug }}"></a>
+        {% endif %}
+    </p>
 </div>
