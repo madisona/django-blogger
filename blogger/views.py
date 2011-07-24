@@ -7,7 +7,7 @@ from blogger.models import BloggerBlog, BloggerPost
 def get_post_context():
     return {
         'config': settings.BLOGGER_OPTIONS,
-        'dev_mode': not settings.on_production_server,
+        'dev_mode': settings.DEBUG,
     }
 
 class PostList(generic.ListView):
