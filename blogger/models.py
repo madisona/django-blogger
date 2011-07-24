@@ -1,113 +1,52 @@
-from xml.dom.minidom import parse
-import urllib
-import re
 
+import urllib
+from datetime import datetime, timedelta
+from xml.dom.minidom import parse
+
+from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.template.defaultfilters import striptags, slugify
-from datetime import datetime, timedelta
-
-STATUS_CHOICES = (
-    (0, 'Offline'),
-    (5, 'Live'),
-)
 
 def get_links(xml):
-    data = {}
     links = xml.getElementsByTagName('link')
-    for link in links:
-        data.update({link.getAttribute('rel'): link.getAttribute('href')})
-    return data
+    return dict([(link.getAttribute('rel'), link.getAttribute('href')) for link in links])
 
-class LiveManager(models.Manager):
-    def get_query_set(self):
-        return super(LiveManager, self).get_query_set().filter(status=5)
-
-class BloggerUser(models.Model):
-
-    # 'static' stuff
-    _profile_url = 'http://www.blogger.com/feeds/%s/blogs'
-
-    # ORM members
-    name = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True, max_length=255, null=True, blank=True)
-    blogger_id = models.CharField(max_length=100)
-
-    def __unicode__(self):
-        return self.name
-
-    def create_blogs(self):
-        cnt = 0
-        xml = parse(urllib.urlopen(BloggerUser._profile_url % self.blogger_id))
-        for entry in xml.getElementsByTagName('entry'):
-            blog_raw_id = entry.getElementsByTagName('id')[0].childNodes[0].data
-            blog_name = entry.getElementsByTagName('title')[0].childNodes[0].data
-            blog_url = None
-            links = get_links(entry)
-            blog = re.findall("([\d]+)", blog_raw_id)[-1] # grab last match
-            django_blog, created = BloggerBlog.objects.get_or_create(
-                blog_id=blog,
-                name=blog_name,
-                blogger_url=links['alternate'],
-            )
-            if created: cnt += 1
-        return cnt
-
+def get_blog_id():
+    from django.conf import settings
+    try:
+        return settings.BLOGGER_OPTIONS['BLOG_ID']
+    except (AttributeError, KeyError):
+        raise ImproperlyConfigured('Your settings Must have a "BLOG_ID" in its "BLOGGER_OPTIONS"')
 
 class BloggerBlog(models.Model):
     """
-        Represents a blog on blogger via its id.
+    Data about your blogger blog and sync/view options.
     """
-    # 'static' stuff & choice fields
+
     _post_url = 'http://www.blogger.com/feeds/%s/posts/default'
     _teaser_length = 80
-    HOUR_CHOICES = (
-        (1, 1),
-        (6, 6),
-        (12, 12),
-        (24, 24),
-    )
+    HOUR_CHOICES = [(h, h) for h in [1, 6, 12, 24]]
 
-    # our ORM members
+    blog_id = models.CharField(max_length=100, primary_key=True, default=get_blog_id(),
+        help_text='Be careful... you can only declare one blog for now. Don\'t try to add another or you will blow out your existing')
     name = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True, max_length=255, null=True, blank=True) # see forms.py for info
-    blog_id = models.CharField(max_length=100, unique=True)
     blogger_url = models.URLField(verify_exists=False)
-    status = models.IntegerField(default=5, choices=STATUS_CHOICES) # switch it off from the main site
-    banner = models.ImageField(upload_to='uploads/blogger/banners/', blank=True, null=True)
-    banner.help_text = 'An image to use for the blogs header on the site'
     paginate = models.BooleanField(default=True)
     per_page = models.IntegerField(default=10)
-    category = models.CharField(max_length=100, blank=True, null=True)
-    category.help_text = 'For ordering the blogs under common categories'
-    show_teaser = models.BooleanField(default=True)
-    show_teaser.help_text = 'When enabled the full post will be stripped to a short text version'
-    teaser_length = models.IntegerField(default=80)
-    teaser_length.help_text = 'Tags will be stripped, so this is plain text words to show'
-    order = models.IntegerField(default=5)
-    order.help_text = 'Used to specifically order the blog list'
+    show_teaser = models.BooleanField(default=True, help_text='When enabled the full post will be stripped to a short text version')
+    teaser_length = models.IntegerField(default=_teaser_length, help_text='Tags will be stripped, so this is plain text words to show')
+
     last_synced = models.DateTimeField(blank=True, null=True)
     minimum_synctime = models.IntegerField(choices=HOUR_CHOICES, default=12)
 
     objects = models.Manager()
-    live = LiveManager()
-
-    class Meta:
-        ordering = ('category', 'order', 'name')
 
     def __unicode__(self):
         return self.name
 
-    @property
-    def url(self):
-        """ Returns the key part of the URL to access this blog via django """
-        if self.slug:
-            return self.slug
-        else:
-            return self.pk
-
     @models.permalink
     def get_absolute_url(self):
-        return ('blogger:blog', [self.url])
+        return ('blogger:home',)
 
     def sync_posts(self, forced=False):
         new_posts = 0
@@ -138,47 +77,35 @@ class BloggerBlog(models.Model):
     def posts(self):
         return BloggerPost.objects.all().filter(blog=self)
 
-    @property
-    def authors(self):
-        return BloggerAuthor.objects.all().filter(blog=self)
-
-class BloggerAuthor(models.Model):
-    # This is for holding author info. This might seem the same as the user model
-    # but its more for holding the basic author data that is present in the feed.
-    # You can add more fields in here if you want to display something specific
-    # for a blog post's author (eg. the photo field here)
-    name = models.CharField(max_length=100)
-    email = models.EmailField() # !unique, noreply@blogger.com can appear >1
-    photo = models.ImageField(upload_to='uploads/blogger/authors/', blank=True, null=True)
-    blog = models.ForeignKey(BloggerBlog)
-    opensocial_id = models.CharField(max_length=50)
-
-    def __unicode__(self):
-        return self.name
+    @staticmethod
+    def get_blog():
+        return BloggerBlog.objects.get(pk=get_blog_id())
 
 class BloggerPost(models.Model):
-    # Holds post info as a form of caching/archiving and easy of use
-    # When a request is made for blog posts it will create new entries
-    # here for the blog.
-
-    blog = models.ForeignKey(BloggerBlog)
-    post_id = models.CharField(max_length=255, unique=True)
+    """
+    The cloned blog posts are stored here.
+    """
+    blog = models.ForeignKey(BloggerBlog, related_name="posts")
+    slug = models.SlugField(blank=True)
+    post_id = models.CharField(max_length=255, primary_key=True)
     published = models.DateTimeField()
     updated = models.DateTimeField()
-    title = models.CharField(max_length=255, blank=True, null=True)
+    title = models.CharField(max_length=255)
     content = models.TextField()
     content_type = models.CharField(max_length=100, default='html')
-    link_edit = models.URLField(verify_exists=False, blank=True, null=True)
-    link_self = models.URLField(verify_exists=False, blank=True, null=True)
-    link_alternate = models.URLField(verify_exists=False, blank=True, null=True)
-    author = models.ForeignKey(BloggerAuthor, blank=True, null=True)
-    status = models.IntegerField(default=5, choices=STATUS_CHOICES) # added to control on our end
+    link_edit = models.URLField(verify_exists=False, blank=True)
+    link_self = models.URLField(verify_exists=False, blank=True)
+    link_alternate = models.URLField(verify_exists=False, blank=True)
+    author = models.CharField(max_length=255, blank=True)
 
     objects = models.Manager()
-    live = LiveManager()
 
     def __unicode__(self):
-        return '%s %s' % (self.title, self.blog.name)
+        return unicode(self.title)
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(self.title)
+        super(BloggerPost, self).save(*args, **kwargs)
 
     @staticmethod
     def from_xml(entry, _blog):
@@ -187,30 +114,14 @@ class BloggerPost(models.Model):
         The published & updated fields are converted to something mysql friendly
         """
 
-        def get_content(tagname):
+        def get_content(tagname, xml_data=entry):
             try:
-                return entry.getElementsByTagName(tagname)[0].childNodes[0].data
+                return xml_data.getElementsByTagName(tagname)[0].childNodes[0].data
             except IndexError:
                 return None
 
         author_xml = entry.getElementsByTagName('author')[0]
-        try:
-            osocial = author_xml.getElementsByTagName('gd:extendedProperty')[0].getAttribute('value'),
-        except IndexError:
-            osocial = 0
-
-        _author, created = BloggerAuthor.objects.get_or_create(
-            email=author_xml.getElementsByTagName('email')[0].childNodes[0].data,
-            name=author_xml.getElementsByTagName('name')[0].childNodes[0].data,
-            opensocial_id=osocial,
-            blog=_blog,
-        )
-
         links = get_links(entry)
-
-        #TODO: this fails if content changes, refactor to pull out just the post_id
-        # to do the lookup first. Then update fields with the data from the XML so
-        # a resync causes updates
 
         created = False
         post_data = dict(
@@ -221,7 +132,7 @@ class BloggerPost(models.Model):
             title=get_content('title'),
             content=get_content('content'),
             content_type=entry.getElementsByTagName('content')[0].getAttribute('type'),
-            author=_author,
+            author=get_content('name', author_xml),
             link_edit=links['edit'],
             link_self=links['self'],
             link_alternate=links['alternate'],
@@ -232,6 +143,7 @@ class BloggerPost(models.Model):
             created = True
 
         post = BloggerPost(**post_data)
+        post.save()
 
         return [post, created]
 
@@ -261,12 +173,13 @@ class BloggerPost(models.Model):
     @models.permalink
     def get_absolute_url(self):
         title = slugify(self.title)
-        if self.blog.slug:
-            return ('blogger:post', [self.blog.slug, self.pk, title])
-        else:
-            return ('blogger:post', [self.blog.pk, self.pk, title])
+        return ('blogger:post', [title])
 
-    class Meta:
+    @staticmethod
+    def get_latest_posts():
+        return BloggerPost.objects.all()[:5]
+
+    class Meta(object):
         ordering = ('-published', '-updated')
 
 
