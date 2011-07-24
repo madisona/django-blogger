@@ -39,14 +39,13 @@ MIDDLEWARE_CLASSES = (
 ROOT_URLCONF = 'example.urls'
 
 TEMPLATE_DIRS = (
-    
+    abspath(join(parent, 'templates')),
 )
 
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
 

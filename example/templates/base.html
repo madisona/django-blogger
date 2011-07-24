@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{% block title %}{% endblock %}</title>
+        <style type="text/css">
+            body {background-color: #ccc;}
+            h1 {text-shadow: 2px 2px #aaa; border-bottom:  1px solid;}
+
+            .wrapper {margin:  .5em;  background-color: #efefef;}
+            .blogpost {margin:  1em 0; padding: .5em; background-color: #fff;}
+            .blogpost h3 a {text-decoration: none;}
+        </style>
+    </head>
+    <body>
+        <div class="wrapper">
+        {% block content %}{% endblock %}
+        </div>
+    </body>
+</html>
