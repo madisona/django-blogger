@@ -7,79 +7,29 @@ import urllib2
 import feedparser
 
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
 from django.db import models
 from django.template.defaultfilters import striptags, slugify
 
-def get_blog_id():
-    from django.conf import settings
-    try:
-        return settings.BLOGGER_OPTIONS['blog_id']
-    except (AttributeError, KeyError):
-        raise ImproperlyConfigured('Your settings Must have a "blog_id" in its "BLOGGER_OPTIONS"')
+from blogger import config
 
 def get_feed_link(links, param):
     try: return next(link['href'] for link in links if link['rel'] == param)
     except StopIteration: return None
 
-def sync_blog_feed(feed=None, blog=None):
-    if not feed:
-        feed = feedparser.parse(BloggerBlog._post_url % get_blog_id())
+def sync_blog_feed():
+    feed = feedparser.parse(config.blogger_feed_url)
 
     new_posts = 0
     for entry in feed.entries:
-        created = BloggerPost.from_feed(entry, blog)
+        created = BloggerPost.from_feed(entry)
         if created: new_posts += 1
     return new_posts
-
-class BloggerBlog(models.Model):
-    """
-    Data about your blogger blog and sync/view options.
-    """
-
-    _post_url = 'http://www.blogger.com/feeds/%s/posts/default'
-    _teaser_length = 80
-    HOUR_CHOICES = [(h, h) for h in [1, 6, 12, 24]]
-
-    blog_id = models.CharField(max_length=100, primary_key=True, default=get_blog_id(),
-        help_text='Be careful... you can only declare one blog for now. Don\'t try to add another or you will blow out your existing')
-    name = models.CharField(max_length=255)
-    blogger_url = models.URLField(verify_exists=False)
-    paginate = models.BooleanField(default=True)
-    per_page = models.IntegerField(default=10)
-    show_teaser = models.BooleanField(default=True, help_text='When enabled the full post will be stripped to a short text version')
-    teaser_length = models.IntegerField(default=_teaser_length, help_text='Tags will be stripped, so this is plain text words to show')
-
-    last_synced = models.DateTimeField(blank=True, null=True)
-    minimum_synctime = models.IntegerField(choices=HOUR_CHOICES, default=12)
-
-    objects = models.Manager()
-
-    def __unicode__(self):
-        return self.name
-
-    @models.permalink
-    def get_absolute_url(self):
-        return ('blogger:home',)
-
-    @property
-    def total_posts(self):
-        return BloggerPost.objects.all().filter(blog=self).count()
-
-    @staticmethod
-    def get_blog():
-        return BloggerBlog.objects.get(pk=get_blog_id())
-
-
-
-
 
 class BloggerPost(models.Model):
     """
     The cloned blog posts are stored here.
     """
-    blog = models.ForeignKey(BloggerBlog, related_name="posts")
     slug = models.SlugField(blank=True)
     post_id = models.CharField(max_length=255, primary_key=True)
     published = models.DateTimeField()
@@ -110,15 +60,15 @@ class BloggerPost(models.Model):
 
     @property
     def remaining_words(self):
-        return max(self.wordcount - self.blog.teaser_length, 0)
+        return max(self.wordcount - config.teaser_length, 0)
 
     @property
     def teaser(self):
-        return ' '.join(striptags(self.content).split()[:self.blog.teaser_length])
+        return ' '.join(striptags(self.content).split()[:config.teaser_length])
 
     @property
     def list_content(self):
-        return self.teaser if self.blog.show_teaser else self.content
+        return self.teaser if config.show_teaser else self.content
 
     @models.permalink
     def get_absolute_url(self):
@@ -126,18 +76,16 @@ class BloggerPost(models.Model):
 
     @staticmethod
     def get_latest_posts():
-        post_count = settings.BLOGGER_OPTIONS.get('recent_post_count', 5)
-        return BloggerPost.objects.all()[:post_count]
+        return BloggerPost.objects.all()[:config.recent_post_count]
 
     @staticmethod
-    def from_feed(entry, blog):
+    def from_feed(entry):
         """
         Creates a new BloggerPost from atom feed. See the below link for schema:
         http://code.google.com/apis/blogger/docs/2.0/developers_guide_protocol.html#RetrievingWithoutQuery
         """
         post_id = entry.id
         post_data = dict(
-            blog=blog,
             title = entry.title,
             author = entry.author_detail.get('name'),
             content = entry.summary,

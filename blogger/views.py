@@ -7,22 +7,18 @@ from django.views import generic
 
 import feedparser
 
-from blogger.models import BloggerBlog, BloggerPost, HubbubSubscription
+from blogger import config
+from blogger.models import BloggerPost, HubbubSubscription
 
 def get_post_context():
     return {
-        'config': settings.BLOGGER_OPTIONS,
+        'config': config,
         'dev_mode': settings.DEBUG,
     }
 
 class PostList(generic.ListView):
     model = BloggerPost
     queryset = BloggerPost.get_latest_posts()
-
-    def get_context_data(self, **kwargs):
-        post_context = get_post_context()
-        post_context.update(kwargs)
-        return dict(blog=BloggerBlog.get_blog(), **post_context)
 
 class PostDetail(generic.DetailView):
     model = BloggerPost
