@@ -1,7 +1,7 @@
 
 from django.contrib import admin
 
-from blogger.models import BloggerBlog, BloggerPost
+from blogger.models import BloggerBlog, BloggerPost, sync_blog_feed
 
 class BlogAdmin(admin.ModelAdmin):
     list_display = ('name', 'total_posts', 'last_synced',)
@@ -10,7 +10,7 @@ class BlogAdmin(admin.ModelAdmin):
 
     def sync_blog(self, request, queryset):
         for blog in queryset:
-            blog.sync_posts(forced=True)
+            sync_blog_feed(blog=blog)
         self.message_user(request, 'Blogs now synced')
     sync_blog.short_description = 'Sync blogs regardless of last update time'
 

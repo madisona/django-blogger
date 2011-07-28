@@ -14,6 +14,7 @@ setup(
     long_description=open("README.txt", 'r').read(),
     packages=find_packages(),
     include_package_data=True,
+    install_requires=['feedparser'],
     test_requirements=['django', 'mock', 'django-debug-toolbar'],
     zip_safe=False,
     classifiers=[

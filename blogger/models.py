@@ -1,16 +1,16 @@
 
+from datetime import datetime
+from time import mktime
+import urllib
 import urllib2
-from datetime import datetime, timedelta
-from xml.dom.minidom import parse
+
+import feedparser
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.urlresolvers import reverse
 from django.db import models
 from django.template.defaultfilters import striptags, slugify
-
-def get_links(xml):
-    links = xml.getElementsByTagName('link')
-    return dict([(link.getAttribute('rel'), link.getAttribute('href')) for link in links])
 
 def get_blog_id():
     from django.conf import settings
@@ -19,16 +19,19 @@ def get_blog_id():
     except (AttributeError, KeyError):
         raise ImproperlyConfigured('Your settings Must have a "blog_id" in its "BLOGGER_OPTIONS"')
 
-def get_content_by_tagname(xml_data, tagname):
-    try:
-        return xml_data.getElementsByTagName(tagname)[0].childNodes[0].data
-    except IndexError:
-        pass
+def get_feed_link(links, param):
+    try: return next(link['href'] for link in links if link['rel'] == param)
+    except StopIteration: return None
 
-def get_timestamp_from_tag(xml_data, tagname):
-    # Date is in ISO 8601 format... we'll ignore the microseconds and timezone offset
-    tag_timestamp = get_content_by_tagname(xml_data, tagname)
-    return datetime.strptime(tag_timestamp[:-10], "%Y-%m-%dT%H:%M:%S")
+def sync_blog_feed(feed=None, blog=None):
+    if not feed:
+        feed = feedparser.parse(BloggerBlog._post_url % get_blog_id())
+
+    new_posts = 0
+    for entry in feed.entries:
+        created = BloggerPost.from_feed(entry, blog)
+        if created: new_posts += 1
+    return new_posts
 
 class BloggerBlog(models.Model):
     """
@@ -61,27 +64,16 @@ class BloggerBlog(models.Model):
         return ('blogger:home',)
 
     @property
-    def needs_synced(self):
-        return bool(self.last_synced + timedelta(hours=self.minimum_synctime) < datetime.now())
-
-    @property
     def total_posts(self):
         return BloggerPost.objects.all().filter(blog=self).count()
-
-    def sync_posts(self, forced=False):
-        new_posts = 0
-        if forced or self.needs_synced:
-            xml = parse(urllib2.urlopen(BloggerBlog._post_url % self.blog_id))
-            for entry in xml.getElementsByTagName('entry'):
-                created = BloggerPost.from_xml(entry, self)
-                if created: new_posts += 1
-            self.last_synced = datetime.now()
-            self.save()
-            return new_posts
 
     @staticmethod
     def get_blog():
         return BloggerBlog.objects.get(pk=get_blog_id())
+
+
+
+
 
 class BloggerPost(models.Model):
     """
@@ -138,28 +130,22 @@ class BloggerPost(models.Model):
         return BloggerPost.objects.all()[:post_count]
 
     @staticmethod
-    def from_xml(entry, _blog):
+    def from_feed(entry, blog):
         """
-        Creates a new BloggerPost from input XML. See the below link for schema:
+        Creates a new BloggerPost from atom feed. See the below link for schema:
         http://code.google.com/apis/blogger/docs/2.0/developers_guide_protocol.html#RetrievingWithoutQuery
-        The published & updated fields are converted to something mysql friendly
         """
-        # todo: Do we want to track oldest updated time and delete any posts we have in db newer than the oldest post in feed that aren't in new feed data?
-        post_id = get_content_by_tagname(entry, 'id')
-        author_xml = entry.getElementsByTagName('author')[0]
-        links = get_links(entry)
-
+        post_id = entry.id
         post_data = dict(
-            blog=_blog,
-            published=get_timestamp_from_tag(entry, 'published'),
-            updated=get_timestamp_from_tag(entry, 'updated'),
-            title=get_content_by_tagname(entry, 'title'),
-            content=get_content_by_tagname(entry, 'content'),
-            content_type=entry.getElementsByTagName('content')[0].getAttribute('type'),
-            author=get_content_by_tagname(author_xml, 'name'),
-            link_edit=links['edit'],
-            link_self=links['self'],
-            link_alternate=links['alternate'],
+            blog=blog,
+            title = entry.title,
+            author = entry.author_detail.get('name'),
+            content = entry.summary,
+            link_edit=get_feed_link(entry.links, 'edit'),
+            link_self=get_feed_link(entry.links, 'self'),
+            link_alternate=get_feed_link(entry.links, 'alternate'),
+            published = datetime.fromtimestamp(mktime(entry.published_parsed)),
+            updated = datetime.fromtimestamp(mktime(entry.updated_parsed)),
         )
         post, created = BloggerPost.objects.get_or_create(
             post_id=post_id,
@@ -170,3 +156,29 @@ class BloggerPost(models.Model):
             post.save()
 
         return created
+
+
+class HubbubSubscription(models.Model):
+    topic_url = models.URLField(primary_key=True)
+    verify_token = models.CharField(max_length=100)
+
+    def send_subscription_request(self):
+
+        subscribe_args = {
+            'hub.callback': reverse("blogger:hubbub"),
+            'hub.mode': 'subscribe',
+            'hub.topic': self.topic_url,
+            'hub.verify': 'async',
+            'hub.verify_token': self.verify_token,
+        }
+        hubbub_url = getattr(settings, 'BLOGGER_OPTIONS').get('hubbub_hub_url')
+        if hubbub_url:
+            response = urllib2.urlopen(hubbub_url, urllib.urlencode(subscribe_args))
+        # todo: else raise exception?
+
+    @staticmethod
+    def get_by_feed_url(feed_url):
+        try:
+            return HubbubSubscription.objects.get(topic_url=feed_url)
+        except HubbubSubscription.DoesNotExist:
+            return None

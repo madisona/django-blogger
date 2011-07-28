@@ -62,4 +62,5 @@ BLOGGER_OPTIONS = {
     'teaser_length': 80,
     'minimum_synctime': 12, # minimum hours between automatic sync of blog
     'disqus_forum': '', # add your disqus shortname here if you want disqus
+    'hubbub_hub_url': 'http://pubsubhubbub.appspot.com/'
 }
