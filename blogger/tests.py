@@ -9,6 +9,96 @@ from django.test import TestCase
 from blogger import models, config
 from blogger.management.commands import syncblog
 
+class GeneralModelFuncTests(TestCase):
+
+    def setUp(self):
+        self.post_id_one = "tag:blogger.com,1999:blog-11111111"
+        self.post_id_two = "tag:blogger.com,1999:blog-22222222"
+        self.raw_feed = """<?xml version='1.0' encoding='UTF-8'?>
+        <feed>
+            <entry>
+                <id>%(post_id_one)s</id>
+                <title>Post One</title>
+                <author><name>Aaron Madison</name></author>
+                <published>2011-07-24T13:15:30.000-07:00</published>
+                <updated>2011-07-24T13:15:30.000-07:00</updated>
+                <content type="html">This is Post One</content>
+                <link rel="edit" href="example.com/edit/1" />
+                <link rel="self" href="example.com/self/1" />
+                <link rel="alternate" href="example.com/alternate/1" />
+            </entry>
+            <entry>
+                <id>%(post_id_two)s</id>
+                <title>Post Two</title>
+                <author><name>Aaron Madison</name></author>
+                <published>2011-07-24T13:15:30.000-07:00</published>
+                <updated>2011-07-24T13:15:30.000-07:00</updated>
+                <content type="html">This is Post Two</content>
+                <link rel="edit" href="example.com/edit/2" />
+                <link rel="self" href="example.com/self/2" />
+                <link rel="alternate" href="example.com/alternate/2" />
+            </entry>
+        </feed>
+        """ % {'post_id_one': self.post_id_one, 'post_id_two': self.post_id_two}
+
+    def test_get_feed_link_returns_link_for_param(self):
+        links = [{'href': "link/one", 'rel': 'self'}, {'href': "link/two", 'rel': 'edit'}]
+        link = models.get_feed_link(links, 'self')
+        self.assertEqual('link/one', link)
+
+    def test_get_feed_link_returns_none_when_param_not_found(self):
+        links = [{'href': "link/two", 'rel': 'edit'}]
+        link = models.get_feed_link(links, 'self')
+        self.assertEqual(None, link)
+
+    def test_converts_each_entry_to_blogger_post_objects(self):
+        new_posts = models.sync_blog_feed(self.raw_feed)
+        self.assertEqual(2, new_posts)
+
+        #todo: test updated and published times... they're returned as a time struct
+        post_one = models.BloggerPost.objects.get(post_id=self.post_id_one)
+        self.assertEqual("tag:blogger.com,1999:blog-11111111", post_one.post_id)
+        self.assertEqual("Post One", post_one.title)
+        self.assertEqual("Aaron Madison", post_one.author)
+        self.assertEqual("This is Post One", post_one.content)
+        self.assertEqual("html", post_one.content_type)
+#        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_one.published)
+#        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_one.updated)
+        self.assertEqual("example.com/edit/1", post_one.link_edit)
+        self.assertEqual("example.com/self/1", post_one.link_self)
+        self.assertEqual("example.com/alternate/1", post_one.link_alternate)
+
+        post_two = models.BloggerPost.objects.get(post_id=self.post_id_two)
+        self.assertEqual("tag:blogger.com,1999:blog-22222222", post_two.post_id)
+        self.assertEqual("Post Two", post_two.title)
+        self.assertEqual("Aaron Madison", post_two.author)
+        self.assertEqual("This is Post Two", post_two.content)
+        self.assertEqual("html", post_two.content_type)
+#        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_two.published)
+#        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_two.updated)
+        self.assertEqual("example.com/edit/2", post_two.link_edit)
+        self.assertEqual("example.com/self/2", post_two.link_self)
+        self.assertEqual("example.com/alternate/2", post_two.link_alternate)
+
+    def test_sync_blog_feed_updates_entries_when_they_already_exist(self):
+        models.BloggerPost.objects.create(
+            post_id=self.post_id_one,
+            title="Old Title",
+            published=datetime.datetime.now(),
+            updated=datetime.datetime.now(),
+            content="Old Post Content",
+        )
+
+        self.assertEqual(1, models.BloggerPost.objects.all().count()) # start with one post
+        new_posts = models.sync_blog_feed(self.raw_feed)
+
+        self.assertEqual(1, new_posts)
+        self.assertEqual(2, models.BloggerPost.objects.all().count()) # only_added_one
+        updated_post = models.BloggerPost.objects.get(post_id=self.post_id_one)
+        self.assertEqual("Post One", updated_post.title)
+        self.assertEqual("This is Post One", updated_post.content)
+
+
 class BloggerPostModelTests(TestCase):
 
     def test_uses_slug_in_absolute_url(self):
