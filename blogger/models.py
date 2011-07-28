@@ -17,11 +17,9 @@ def get_feed_link(links, param):
     try: return next(link['href'] for link in links if link['rel'] == param)
     except StopIteration: return None
 
-def sync_blog_feed():
-    feed = feedparser.parse(config.blogger_feed_url)
-
+def sync_blog_feed(raw_feed):
     new_posts = 0
-    for entry in feed.entries:
+    for entry in feedparser.parse(raw_feed).entries:
         created = BloggerPost.from_feed(entry)
         if created: new_posts += 1
     return new_posts

@@ -7,6 +7,7 @@ from django.core.urlresolvers import reverse
 from django.test import TestCase
 
 from blogger import models, config
+from blogger.management.commands import syncblog
 
 class BloggerPostModelTests(TestCase):
 
@@ -89,3 +90,12 @@ class BloggerPostModelTests(TestCase):
             post6 = models.BloggerPost.objects.create(post_id='6', title="post 6", published=now, updated=now)
 
             self.assertEqual([post6, post5, post4, post3, post2], list(models.BloggerPost.get_latest_posts()))
+
+class SyncBlogManagementTests(TestCase):
+
+    def test_syncs_blog_feed_providing_config_url_on_handle_command(self):
+        with mock.patch('blogger.management.commands.syncblog.sync_blog_feed') as sync_feed:
+            sync_feed.return_value = 1
+            syncblog.Command().handle()
+        sync_feed.assert_called_once_with(config.blogger_feed_url)
+
