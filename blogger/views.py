@@ -7,8 +7,7 @@ from django.views import generic
 
 import feedparser
 
-from blogger import config
-from blogger.models import BloggerPost, HubbubSubscription
+from blogger import models, config
 
 def get_post_context():
     return {
@@ -17,11 +16,11 @@ def get_post_context():
     }
 
 class PostList(generic.ListView):
-    model = BloggerPost
-    queryset = BloggerPost.get_latest_posts()
+    model = models.BloggerPost
+    queryset = models.BloggerPost.get_latest_posts()
 
 class PostDetail(generic.DetailView):
-    model = BloggerPost
+    model = models.BloggerPost
 
     def get_context_data(self, **kwargs):
         post_context = get_post_context()
@@ -29,23 +28,15 @@ class PostDetail(generic.DetailView):
         return post_context
 
 class ArchiveMonth(generic.MonthArchiveView):
-    model = BloggerPost
+    model = models.BloggerPost
     date_field = 'published'
     month_format = "%m"
 
 class ArchiveYear(generic.YearArchiveView):
-    model = BloggerPost
+    model = models.BloggerPost
     date_field = 'published'
     make_object_list = True
     month_format = "%m"
-
-
-
-def subscribe(request):
-    pass
-
-def pubsubhubbub(request):
-    pass
 
 class PubSubHubbub(generic.TemplateView):
 
@@ -53,19 +44,15 @@ class PubSubHubbub(generic.TemplateView):
         """
         Handles Subscription Request from hub server
         """
-        hub_mode = request.GET.get('hub.mode')
-        challenge = request.GET.get('hub.challenge')
-        if hub_mode == 'unsubscribe':
-            response = http.HttpResponse(challenge, mimetype="text/plain")
-        elif hub_mode != 'subscribe':
-            return http.HttpResponseBadRequest(mimetype="text/plain")
-        else:
-            subscription = HubbubSubscription.get_by_feed_url(request.GET.get('hub.topic'))
-            if not subscription or request.GET.get('hub.verify_token') != subscription.verify_token:
-                response = http.HttpResponseBadRequest(mimetype="text/plain")
-            else:
-                response = http.HttpResponse(challenge, mimetype="text/plain")
-        return response
+        subscription = models.HubbubSubscription.get_by_feed_url(request.GET.get('hub.topic'))
+        if request.GET.get('hub.mode') not in ('subscribe', 'unsubscribe'):
+            return http.HttpResponseBadRequest('invalid mode', mimetype='text/plain')
+        elif not subscription:
+            return http.HttpResponseBadRequest('subscription not found', mimetype='text/plain')
+        elif request.GET.get('hub.verify_token') != subscription.verify_token:
+            return http.HttpResponseBadRequest('data did not match', mimetype='text/plain')
+
+        return http.HttpResponse(request.GET.get('hub.challenge'), mimetype="text/plain")
 
     def post(self, request, *args, **kwargs):
         """
@@ -73,21 +60,12 @@ class PubSubHubbub(generic.TemplateView):
         and ignores bad requests.
         """
         feed = feedparser.parse(request.raw_post_data)
-
-        feed_url = find_self_url(feed.feed.links)
-        subscription = HubbubSubscription.get_by_feed_url(feed_url)
+        
+        feed_url = models.get_feed_link(feed.feed.links, 'self')
+        subscription = models.HubbubSubscription.get_by_feed_url(feed_url)
         if subscription:
-            pass
-            # kick off update...
+            models.sync_blog_feed(request.raw_post_data)
         else:
             logging.warn("Discarding unknown feed: %s", feed_url)
 
-
-
         return http.HttpResponse(status=204)
-
-def find_self_url(links):
-    for link in links:
-        if link.rel == 'self':
-            return link.href
-    return None

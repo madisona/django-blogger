@@ -33,3 +33,5 @@ blog archive. The point for this app is to link in to a blog from a current
 point.
 
 
+# todo: Should create actions to re-send subscription request
+        and also to send unsubscribe request

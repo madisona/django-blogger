@@ -12,5 +12,5 @@ show_teaser = settings.BLOGGER_OPTIONS.get('show_teaser', False)
 teaser_length = settings.BLOGGER_OPTIONS.get('teaser_length', 100)
 recent_post_count = settings.BLOGGER_OPTIONS.get('recent_post_count', 5)
 
+hubbub_hub_url = settings.BLOGGER_OPTIONS.get('hubbub_hub_url', 'http://pubsubhubbub.appspot.com/')
 disqus_forum = settings.BLOGGER_OPTIONS.get('disqus_forum')
-hubbub_hub_url = settings.BLOGGER_OPTIONS.get('hubbub_hub_url')

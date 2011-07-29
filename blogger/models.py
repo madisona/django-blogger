@@ -1,12 +1,12 @@
 
 from datetime import datetime
+from hashlib import sha256
 from time import mktime
 import urllib
 import urllib2
 
 import feedparser
 
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db import models
 from django.template.defaultfilters import striptags, slugify
@@ -108,19 +108,23 @@ class HubbubSubscription(models.Model):
     topic_url = models.URLField(primary_key=True)
     verify_token = models.CharField(max_length=100)
 
-    def send_subscription_request(self):
+    def __unicode__(self):
+        return unicode(self.topic_url)
 
+    def save(self, **kwargs):
+        self.verify_token = sha256(self.topic_url + str(datetime.now())).hexdigest()
+        super(HubbubSubscription, self).save(**kwargs)
+
+    def send_subscription_request(self, mode="subscribe", url_prefix=''):
         subscribe_args = {
-            'hub.callback': reverse("blogger:hubbub"),
-            'hub.mode': 'subscribe',
+            'hub.callback': url_prefix + reverse("blogger:hubbub"), # NEEDS TO BE ABSOLUTE PATH
+            'hub.mode': mode,
             'hub.topic': self.topic_url,
             'hub.verify': 'async',
             'hub.verify_token': self.verify_token,
         }
-        hubbub_url = getattr(settings, 'BLOGGER_OPTIONS').get('hubbub_hub_url')
-        if hubbub_url:
-            response = urllib2.urlopen(hubbub_url, urllib.urlencode(subscribe_args))
-        # todo: else raise exception?
+        #todo: not sure if we can just ignore all responses or not...
+        response = urllib2.urlopen(config.hubbub_hub_url, urllib.urlencode(subscribe_args))
 
     @staticmethod
     def get_by_feed_url(feed_url):
@@ -128,3 +132,4 @@ class HubbubSubscription(models.Model):
             return HubbubSubscription.objects.get(topic_url=feed_url)
         except HubbubSubscription.DoesNotExist:
             return None
+

@@ -189,3 +189,122 @@ class SyncBlogManagementTests(TestCase):
             syncblog.Command().handle()
         sync_feed.assert_called_once_with(config.blogger_feed_url)
 
+class PubSubHubbubCallbackHandlerTests(TestCase):
+
+    def setUp(self):
+        self.post_id_one = "tag:blogger.com,1999:blog-11111111"
+        self.xml_data = """<?xml version='1.0' encoding='UTF-8'?>
+        <feed>
+            <link rel='self' type='application/atom+xml' href='http://buzz.blogspot.com/feeds/posts/default/' />
+            <link rel='http://schemas.google.com/g/2005#post' type='application/atom+xml' href='http://www.blogger.com/feeds/' />
+            <link rel='alternate' type='text/html' href='http://www.blogspot.com/' />
+            <link rel='next' type='application/atom+xml' href='http://www.blogger.com/feeds/' />
+            <entry>
+                <id>%s</id>
+                <title>Post One</title>
+                <author><name>Aaron Madison</name></author>
+                <published>2011-07-24T13:15:30.000-07:00</published>
+                <updated>2011-07-24T13:15:30.000-07:00</updated>
+                <content type="html">This is Post One</content>
+                <link rel="edit" href="example.com/edit/1" />
+                <link rel="self" href="example.com/self/1" />
+                <link rel="alternate" href="example.com/alternate/1" />
+            </entry>
+        </feed>""" % self.post_id_one
+
+    def test_returns_challenge_content_when_mode_is_unsubscribe_and_verify_token_matches(self):
+        topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
+        verify_token = "secret_token"
+        subscription = models.HubbubSubscription.objects.create(
+            topic_url=topic_url,
+        )
+
+        response = self.client.get(reverse("blogger:hubbub"), data={
+            'hub.topic': topic_url,
+            'hub.mode': 'unsubscribe',
+            'hub.challenge': 'a challenge',
+            'hub.verify_token': subscription.verify_token,
+        })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("a challenge", response.content)
+
+    def test_returns_challenge_content_when_mode_is_subscribe_and_verify_token_matches(self):
+        topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
+        verify_token = "secret_token"
+        subscription = models.HubbubSubscription.objects.create(
+            topic_url=topic_url,
+        )
+
+        response = self.client.get(reverse("blogger:hubbub"), data={
+            'hub.topic': topic_url,
+            'hub.mode': 'subscribe',
+            'hub.challenge': 'a challenge',
+            'hub.verify_token': subscription.verify_token,
+        })
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("a challenge", response.content)
+
+    def test_returns_bad_request_when_token_doesnt_match(self):
+        topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
+        verify_token = "secret_token"
+        models.HubbubSubscription.objects.create(
+            topic_url=topic_url,
+            verify_token=verify_token,
+        )
+
+        response = self.client.get(reverse("blogger:hubbub"), data={
+            'hub.topic': topic_url,
+            'hub.mode': 'unsubscribe',
+            'hub.challenge': 'a challenge',
+            'hub.verify_token': 'a_different_token',
+        })
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("data did not match", response.content)
+
+    def test_returns_bad_request_when_subscription_not_found(self):
+        response = self.client.get(reverse("blogger:hubbub"), data={
+            'hub.topic': "http://buzz.blogspot.com/feeds/posts/default/",
+            'hub.mode': 'unsubscribe',
+            'hub.challenge': 'a challenge',
+            'hub.verify_token': 'a_different_token',
+        })
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("subscription not found", response.content)
+
+    def test_returns_bad_request_when_mode_not_subscribe_or_unsubscribe(self):
+        response = self.client.get(reverse("blogger:hubbub"), data={
+            'hub.topic': "http://buzz.blogspot.com/feeds/posts/default/",
+            'hub.mode': 'othermode',
+            'hub.challenge': 'a challenge',
+            'hub.verify_token': 'a_different_token',
+        })
+        self.assertEqual(400, response.status_code)
+        self.assertEqual("invalid mode", response.content)
+
+    @mock.patch('blogger.models.sync_blog_feed')
+    def test_returns_response_but_no_action_when_subscription_not_found(self, sync_blog_feed):
+        xml_data = self.xml_data
+        response = self.client.post(reverse("blogger:hubbub"), data=xml_data, content_type="application/atom+xml")
+        self.assertEqual(204, response.status_code)
+        self.assertFalse(sync_blog_feed.called)
+
+    def test_syncs_feed_given_when_subscription_found(self):
+        models.HubbubSubscription.objects.create(topic_url="http://buzz.blogspot.com/feeds/posts/default/")
+
+        self.assertEqual(0, models.BloggerPost.objects.all().count())
+        xml_data = self.xml_data
+        response = self.client.post(reverse("blogger:hubbub"), data=xml_data, content_type="application/atom+xml")
+
+        self.assertEqual(204, response.status_code)
+        models.BloggerPost.objects.get(pk=self.post_id_one)
+        post_one = models.BloggerPost.objects.get(post_id=self.post_id_one)
+        self.assertEqual(self.post_id_one, post_one.post_id)
+        self.assertEqual("Post One", post_one.title)
+        self.assertEqual("Aaron Madison", post_one.author)
+        self.assertEqual("This is Post One", post_one.content)
+#        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_one.published)
+#        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_one.updated)
+        self.assertEqual("html", post_one.content_type)
+        self.assertEqual("example.com/edit/1", post_one.link_edit)
+        self.assertEqual("example.com/self/1", post_one.link_self)
+        self.assertEqual("example.com/alternate/1", post_one.link_alternate)
