@@ -1,5 +1,6 @@
 
 import datetime
+import feedparser
 import mock
 
 from django.conf import settings
@@ -52,7 +53,7 @@ class GeneralModelFuncTests(TestCase):
         self.assertEqual(None, link)
 
     def test_converts_each_entry_to_blogger_post_objects(self):
-        new_posts = models.sync_blog_feed(self.raw_feed)
+        new_posts = models.sync_blog_feed(feedparser.parse(self.raw_feed))
         self.assertEqual(2, new_posts)
 
         #todo: test updated and published times... they're returned as a time struct
@@ -90,7 +91,7 @@ class GeneralModelFuncTests(TestCase):
         )
 
         self.assertEqual(1, models.BloggerPost.objects.all().count()) # start with one post
-        new_posts = models.sync_blog_feed(self.raw_feed)
+        new_posts = models.sync_blog_feed(feedparser.parse(self.raw_feed))
 
         self.assertEqual(1, new_posts)
         self.assertEqual(2, models.BloggerPost.objects.all().count()) # only_added_one
@@ -183,11 +184,13 @@ class BloggerPostModelTests(TestCase):
 
 class SyncBlogManagementTests(TestCase):
 
-    def test_syncs_blog_feed_providing_config_url_on_handle_command(self):
+    @mock.patch('feedparser.parse')
+    def test_syncs_blog_feed_providing_config_url_on_handle_command(self, parse):
         with mock.patch('blogger.management.commands.syncblog.sync_blog_feed') as sync_feed:
             sync_feed.return_value = 1
             syncblog.Command().handle()
-        sync_feed.assert_called_once_with(config.blogger_feed_url)
+        parse.assert_called_once_with(config.blogger_feed_url)
+        sync_feed.assert_called_once_with(parse.return_value)
 
 class PubSubHubbubCallbackHandlerTests(TestCase):
 

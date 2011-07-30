@@ -64,7 +64,7 @@ class PubSubHubbub(generic.TemplateView):
         feed_url = models.get_feed_link(feed.feed.links, 'self')
         subscription = models.HubbubSubscription.get_by_feed_url(feed_url)
         if subscription:
-            models.sync_blog_feed(request.raw_post_data)
+            models.sync_blog_feed(feedparser.parse(request.raw_post_data))
         else:
             logging.warn("Discarding unknown feed: %s", feed_url)
 

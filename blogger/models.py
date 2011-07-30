@@ -1,11 +1,11 @@
 
 from datetime import datetime
 from hashlib import sha256
+import logging
 from time import mktime
+import traceback
 import urllib
 import urllib2
-
-import feedparser
 
 from django.core.urlresolvers import reverse
 from django.db import models
@@ -17,9 +17,9 @@ def get_feed_link(links, param):
     try: return next(link['href'] for link in links if link['rel'] == param)
     except StopIteration: return None
 
-def sync_blog_feed(raw_feed):
+def sync_blog_feed(feed):
     new_posts = 0
-    for entry in feedparser.parse(raw_feed).entries:
+    for entry in feed.entries:
         created = BloggerPost.from_feed(entry)
         if created: new_posts += 1
     return new_posts
@@ -73,10 +73,6 @@ class BloggerPost(models.Model):
         return ('blogger:post', [self.slug])
 
     @staticmethod
-    def get_latest_posts():
-        return BloggerPost.objects.all()[:config.recent_post_count]
-
-    @staticmethod
     def from_feed(entry):
         """
         Creates a new BloggerPost from atom feed. See the below link for schema:
@@ -103,10 +99,17 @@ class BloggerPost(models.Model):
 
         return created
 
+    @classmethod
+    def get_latest_posts(cls):
+        return cls.objects.all()[:config.recent_post_count]
+
 
 class HubbubSubscription(models.Model):
     topic_url = models.URLField(primary_key=True)
+    host_name = models.CharField(max_length=100)
     verify_token = models.CharField(max_length=100)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def __unicode__(self):
         return unicode(self.topic_url)
@@ -115,21 +118,40 @@ class HubbubSubscription(models.Model):
         self.verify_token = sha256(self.topic_url + str(datetime.now())).hexdigest()
         super(HubbubSubscription, self).save(**kwargs)
 
-    def send_subscription_request(self, mode="subscribe", url_prefix=''):
+    def delete(self, **kwargs):
+        self.send_subscription_request(mode="unsubscribe")
+        super(HubbubSubscription, self).delete(**kwargs)
+
+    def send_subscription_request(self, mode="subscribe"):
+        callback_url = self.callback_url
         subscribe_args = {
-            'hub.callback': url_prefix + reverse("blogger:hubbub"), # NEEDS TO BE ABSOLUTE PATH
+            'hub.callback': callback_url,
             'hub.mode': mode,
             'hub.topic': self.topic_url,
             'hub.verify': 'async',
             'hub.verify_token': self.verify_token,
         }
-        #todo: not sure if we can just ignore all responses or not...
-        response = urllib2.urlopen(config.hubbub_hub_url, urllib.urlencode(subscribe_args))
 
-    @staticmethod
-    def get_by_feed_url(feed_url):
         try:
-            return HubbubSubscription.objects.get(topic_url=feed_url)
-        except HubbubSubscription.DoesNotExist:
+            response = urllib2.urlopen(config.hubbub_hub_url, urllib.urlencode(subscribe_args))
+        except urllib2.HTTPError:
+            # not sure what to inspect or what kind of feedback is useful here
+            # this always fails when hostname is not publicly accessible.
+            error_traceback = traceback.format_exc()
+            logging.debug('Error encountered sending subscription '
+                          'to %s for callback %s:\n%s',
+                          self.topic_url, callback_url, error_traceback)
+            return False
+        return True
+
+    @property
+    def callback_url(self):
+        return "http://%s%s" % (self.host_name, reverse("blogger:hubbub"))
+
+    @classmethod
+    def get_by_feed_url(cls, feed_url):
+        try:
+            return cls.objects.get(topic_url=feed_url)
+        except cls.DoesNotExist:
             return None
 
