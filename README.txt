@@ -1,20 +1,16 @@
-     _  _                               _     _
-  __| |(_) __ _ _ __   __ _  ___       | |__ | | ___   __ _  __ _  ___ _ __
- / _` || |/ _` | '_ \ / _` |/ _ \ _____| '_ \| |/ _ \ / _` |/ _` |/ _ \ '__|
-| (_| || | (_| | | | | (_| | (_) |_____| |_) | | (_) | (_| | (_| |  __/ |
- \__,_|/ |\__,_|_| |_|\__, |\___/      |_.__/|_|\___/ \__, |\__, |\___|_|
-     |__/             |___/                           |___/ |___/
 
-A Google Blogger to Django linking app    Jaymz Campbell    http://jaymz.eu/
+Todo: Need a new name... shouldn't call it django-blogger because someone
+else already did
 
 
 Overview
 ========
+Is essentially a pubsubhubbub subscriber for an already existing blogger blog.
+My use case is that I want to use blogger's tools to create and manage posts
+but I want the blog to be part of a larger website on the same domain.
 
-This application allows you to plug in an existing set of Blogger blogs to
-your django application. It does not require authentication, it works off
-pulling in the RSS feeds from blogger. You can enable this for your blogs
-within the admin.
+This app lets me just plug my blog into the larger project.
+
 
 Installation
 ============
@@ -23,15 +19,18 @@ Add "blogger" to your installed app's and add in the following URL conf:
 
     (r'^blogs/', include('blogger.urls', namespace='blogger'))
 
-To quickly import all blogs for a user add a new BloggerUser and paste in
-the blogger id. You can find that in the URL for your profile. There is
-an admin action to create new blogs for users. When you have created your
-blogs there is another action to sync up the posts with blogs.
+Add BLOGGER_OPTIONS dictionary to your settings. You need at least a
+'blog_id' declared in the BLOGGER OPTIONS
+
+run ./manage.py addsubscription, enter the hostname you're site is running on
+and you should be good to go.
+
+If you're running on a local environment, the subscription stuff won't work
+because the real hub can't ping your computer.
+
+To get your blog synced, run ./manage.py syncblog
+
 
 Please note that as this uses the RSS feed it does not download the entire
 blog archive. The point for this app is to link in to a blog from a current
-point.
-
-
-# todo: Should create actions to re-send subscription request
-        and also to send unsubscribe request
+point. By default, blogger sends the last 25 posts.
