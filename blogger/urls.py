@@ -8,7 +8,7 @@ from blogger import views
 # (r'^', include('blogger.urls', namespace='blogger')),
 
 urlpatterns = patterns('blogger.views',
-    url(r'^blog/hubbub/', csrf_exempt(views.PubSubHubbub.as_view()), name="hubbub"),
+    url(r'^blog/pubsubhubbub/', csrf_exempt(views.PubSubHubbub.as_view()), name="hubbub"),
     url(r'^blog/(?P<year>\d{4})/$', views.ArchiveYear.as_view(), name='archive_year'),
     url(r'^blog/(?P<year>\d{4})/(?P<month>\w+)/$', views.ArchiveMonth.as_view(), name='archive_month'),
     url(r'^blog/(?P<slug>[\w/-]+)/$', views.PostDetail.as_view(), name='post'),
