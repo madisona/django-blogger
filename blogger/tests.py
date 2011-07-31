@@ -311,3 +311,21 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
         self.assertEqual("example.com/edit/1", post_one.link_edit)
         self.assertEqual("example.com/self/1", post_one.link_self)
         self.assertEqual("example.com/alternate/1", post_one.link_alternate)
+
+class PostDetailViewTests(TestCase):
+
+    def test_sends_config_to_template(self):
+        now = datetime.datetime.now()
+        post = models.BloggerPost.objects.create(title="My Post", published=now, updated=now)
+        response = self.client.get(post.get_absolute_url())
+
+        self.assertEqual(config, response.context['config'])
+        self.assertEqual(settings.DEBUG, response.context['dev_mode'])
+
+class PostListViewTests(TestCase):
+
+    def test_sends_config_to_template(self):
+        response = self.client.get(reverse("blogger:home"))
+
+        self.assertEqual(config, response.context['config'])
+        self.assertEqual(settings.DEBUG, response.context['dev_mode'])
