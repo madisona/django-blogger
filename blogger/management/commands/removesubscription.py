@@ -14,6 +14,7 @@ class Command(BaseCommand):
         subscription = models.HubbubSubscription.get_by_feed_url(topic_url)
         if subscription:
             response = subscription.send_subscription_request(mode='unsubscribe')
+            subscription.delete()
 
             if response is False:
                 sys.stdout.write(
