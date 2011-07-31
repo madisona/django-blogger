@@ -9,23 +9,20 @@ import feedparser
 
 from blogger import models, config
 
-def get_post_context():
-    return {
-        'config': config,
-        'dev_mode': settings.DEBUG,
-    }
+class PostContextMixin(object):
 
-class PostList(generic.ListView):
+    def get_context_data(self, **kwargs):
+        return dict({
+            'config': config,
+            'dev_mode': settings.DEBUG,
+        }, **kwargs)
+
+class PostList(PostContextMixin, generic.ListView):
     model = models.BloggerPost
     queryset = models.BloggerPost.get_latest_posts()
 
-class PostDetail(generic.DetailView):
+class PostDetail(PostContextMixin, generic.DetailView):
     model = models.BloggerPost
-
-    def get_context_data(self, **kwargs):
-        post_context = get_post_context()
-        post_context.update(kwargs)
-        return post_context
 
 class ArchiveMonth(generic.MonthArchiveView):
     model = models.BloggerPost
