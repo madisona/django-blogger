@@ -44,7 +44,7 @@ class PubSubHubbub(generic.TemplateView):
         """
         Handles Subscription Request from hub server
         """
-        subscription = models.HubbubSubscription.get_by_feed_url(request.GET.get('hub.topic'))
+        subscription = models.HubbubSubscription.get_by_feed_url(request.GET.get('hub.topic', ''))
         if request.GET.get('hub.mode') not in ('subscribe', 'unsubscribe'):
             return http.HttpResponseBadRequest('invalid mode', mimetype='text/plain')
         elif not subscription:
