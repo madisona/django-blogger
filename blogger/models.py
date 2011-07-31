@@ -14,7 +14,7 @@ from django.template.defaultfilters import striptags, slugify
 from blogger import config
 
 def get_feed_link(links, param):
-    try: return next(link['href'] for link in links if link['rel'] == param)
+    try: return (link['href'] for link in links if link['rel'] == param).next()
     except StopIteration: return None
 
 def sync_blog_feed(feed):
