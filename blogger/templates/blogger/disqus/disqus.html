@@ -1,7 +1,7 @@
 <script type="text/javascript">
     var disqus_shortname = '{{ config.disqus_forum }}';
-    var disqus_identifier = '{{ object.slug }}';
-    var disqus_url = '{{ object.get_absolute_url }}';
+    var disqus_identifier = '{{ object.post_id }}';
+    var disqus_url = 'http://{{ request.get_host }}{{ object.get_absolute_url }}';
 
     {% if dev_mode %}
     var disqus_developer = 1;

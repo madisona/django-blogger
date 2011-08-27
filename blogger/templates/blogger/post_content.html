@@ -7,7 +7,7 @@
     <p class="post-footer">
       posted by {{ object.author }} at <a href="{{ object.get_absolute_url }}">{{ object.published|date:"P" }}</a>
         {% if config.disqus_forum %}
-        | <a href="{{ object.get_absolute_url }}#disqus_thread" data-disqus-identifier="{{ object.slug }}"></a>
+        | <a href="{{ object.get_absolute_url }}#disqus_thread" data-disqus-identifier="{{ object.post_id }}"></a>
         {% endif %}
     </p>
 </div>
