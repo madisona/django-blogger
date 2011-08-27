@@ -110,6 +110,7 @@ class BloggerPostModelTests(TestCase):
     def test_sets_slug_field_from_published_date_and_title_on_save(self):
         now = datetime.datetime.now()
         post = models.BloggerPost.objects.create(
+            post_id=123,
             title="A blog post title",
             published=now,
             updated=datetime.datetime.now(),
@@ -316,7 +317,7 @@ class PostDetailViewTests(TestCase):
 
     def test_sends_config_to_template(self):
         now = datetime.datetime.now()
-        post = models.BloggerPost.objects.create(title="My Post", published=now, updated=now)
+        post = models.BloggerPost.objects.create(post_id=123, title="My Post", published=now, updated=now)
         response = self.client.get(post.get_absolute_url())
 
         self.assertEqual(config, response.context['config'])
