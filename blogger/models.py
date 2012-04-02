@@ -17,6 +17,9 @@ def get_feed_link(links, param):
     try: return (link['href'] for link in links if link['rel'] == param).next()
     except StopIteration: return None
 
+def get_all_feed_links(links):
+    return [link['href'] for link in links]
+
 def sync_blog_feed(feed):
     new_posts = 0
     for entry in feed.entries:
@@ -105,9 +108,12 @@ class BloggerPost(models.Model):
 
 
 class HubbubSubscription(models.Model):
-    topic_url = models.URLField(primary_key=True)
-    host_name = models.CharField(max_length=100)
+    topic_url = models.URLField(primary_key=True, help_text="URL of feed you're subscribing to.")
+
+    host_name = models.CharField(max_length=100, help_text="Host name of subscribing blog.")
     verify_token = models.CharField(max_length=100)
+
+    is_verified = models.BooleanField()
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -117,6 +123,7 @@ class HubbubSubscription(models.Model):
     def save(self, **kwargs):
         self.verify_token = sha256(self.topic_url + str(datetime.now())).hexdigest()
         super(HubbubSubscription, self).save(**kwargs)
+
 
     def delete(self, **kwargs):
         self.send_subscription_request(mode="unsubscribe")
@@ -133,7 +140,7 @@ class HubbubSubscription(models.Model):
         }
 
         try:
-            response = urllib2.urlopen(config.hubbub_hub_url, urllib.urlencode(subscribe_args))
+            urllib2.urlopen(config.hubbub_hub_url, urllib.urlencode(subscribe_args))
         except urllib2.HTTPError:
             # not sure what to inspect or what kind of feedback is useful here
             # this always fails when hostname is not publicly accessible.
@@ -152,6 +159,13 @@ class HubbubSubscription(models.Model):
     def get_by_feed_url(cls, feed_url):
         try:
             return cls.objects.get(topic_url=feed_url)
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def get_by_url_list(cls, url_list):
+        try:
+            return cls.objects.get(topic_url__in=url_list)
         except cls.DoesNotExist:
             return None
 

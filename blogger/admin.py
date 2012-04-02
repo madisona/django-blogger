@@ -11,7 +11,7 @@ class PostAdmin(admin.ModelAdmin):
         return False
 
 class HubbubSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ['topic_url', 'callback_url', 'created', 'updated']
+    list_display = ['topic_url', 'callback_url', 'verified', 'created', 'updated']
     readonly_fields = ['topic_url', 'host_name', 'verify_token']
 
     def has_add_permission(self, request):

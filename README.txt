@@ -34,3 +34,10 @@ To get your blog synced, run ./manage.py syncblog
 Please note that as this uses the RSS feed it does not download the entire
 blog archive. The point for this app is to link in to a blog from a current
 point. By default, blogger sends the last 25 posts.
+
+
+OTHER NOTES:
+------------
+Blogger publishes the feed (I think) using the
+``<blog_name>.blogspot.com/feeds/posts/default``. This is what you should
+use as the 'topic_url' when creating your subscription.

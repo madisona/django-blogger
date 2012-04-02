@@ -52,6 +52,11 @@ class GeneralModelFuncTests(TestCase):
         link = models.get_feed_link(links, 'self')
         self.assertEqual(None, link)
 
+    def test_gets_all_feed_links(self):
+        links = [{'href': "link/one", 'rel': 'self'}, {'href': "link/two", 'rel': 'edit'}]
+        links = models.get_all_feed_links(links)
+        self.assertEqual(['link/one', 'link/two'], links)
+
     def test_converts_each_entry_to_blogger_post_objects(self):
         new_posts = models.sync_blog_feed(feedparser.parse(self.raw_feed))
         self.assertEqual(2, new_posts)
@@ -218,7 +223,6 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
 
     def test_returns_challenge_content_when_mode_is_unsubscribe_and_verify_token_matches(self):
         topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
-        verify_token = "secret_token"
         subscription = models.HubbubSubscription.objects.create(
             topic_url=topic_url,
         )
@@ -234,7 +238,6 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
 
     def test_returns_challenge_content_when_mode_is_subscribe_and_verify_token_matches(self):
         topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
-        verify_token = "secret_token"
         subscription = models.HubbubSubscription.objects.create(
             topic_url=topic_url,
         )
@@ -247,6 +250,23 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
         })
         self.assertEqual(200, response.status_code)
         self.assertEqual("a challenge", response.content)
+
+    def test_marks_subscription_as_verified_when_receives_valid_subscription_request(self):
+        topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
+        subscription = models.HubbubSubscription.objects.create(topic_url=topic_url)
+
+        self.assertEqual(False, subscription.is_verified)
+        response = self.client.get(reverse("blogger:hubbub"), data={
+            'hub.topic': topic_url,
+            'hub.mode': 'subscribe',
+            'hub.challenge': 'a challenge',
+            'hub.verify_token': subscription.verify_token,
+        })
+        self.assertEqual(200, response.status_code)
+
+        s = models.HubbubSubscription.get_by_feed_url(topic_url)
+        self.assertEqual(True, s.is_verified)
+
 
     def test_returns_bad_request_when_token_doesnt_match(self):
         topic_url = "http://buzz.blogspot.com/feeds/posts/default/"

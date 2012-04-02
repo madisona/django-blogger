@@ -15,7 +15,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=['feedparser'],
-    test_requirements=['django', 'mock', 'django-debug-toolbar'],
+    test_requirements=['django', 'mock', 'django-debug-toolbar', 'south'],
     zip_safe=False,
     classifiers=[
         "Development Status :: 4 - Beta",

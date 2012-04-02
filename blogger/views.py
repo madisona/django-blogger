@@ -9,6 +9,7 @@ import feedparser
 
 from blogger import models, config
 
+
 class PostContextMixin(object):
 
     def get_context_data(self, **kwargs):
@@ -17,23 +18,28 @@ class PostContextMixin(object):
             'dev_mode': settings.DEBUG,
         }, **kwargs)
 
+
 class PostList(PostContextMixin, generic.ListView):
     model = models.BloggerPost
     queryset = models.BloggerPost.get_latest_posts()
 
+
 class PostDetail(PostContextMixin, generic.DetailView):
     model = models.BloggerPost
+
 
 class ArchiveMonth(generic.MonthArchiveView):
     model = models.BloggerPost
     date_field = 'published'
     month_format = "%m"
 
+
 class ArchiveYear(generic.YearArchiveView):
     model = models.BloggerPost
     date_field = 'published'
     make_object_list = True
     month_format = "%m"
+
 
 class PubSubHubbub(generic.TemplateView):
 
@@ -49,6 +55,8 @@ class PubSubHubbub(generic.TemplateView):
         elif request.GET.get('hub.verify_token') != subscription.verify_token:
             return http.HttpResponseBadRequest('data did not match', mimetype='text/plain')
 
+        subscription.is_verified = True
+        subscription.save()
         return http.HttpResponse(request.GET.get('hub.challenge'), mimetype="text/plain")
 
     def post(self, request, *args, **kwargs):
@@ -57,12 +65,13 @@ class PubSubHubbub(generic.TemplateView):
         and ignores bad requests.
         """
         feed = feedparser.parse(request.raw_post_data)
-        
-        feed_url = models.get_feed_link(feed.feed.links, 'self')
-        subscription = models.HubbubSubscription.get_by_feed_url(feed_url)
+
+        feed_links = models.get_all_feed_links(feed.feed.links)
+        subscription = models.HubbubSubscription.get_by_url_list(feed_links)
         if subscription:
             models.sync_blog_feed(feedparser.parse(request.raw_post_data))
         else:
+            feed_url = models.get_feed_link(feed.feed.links, 'self')
             logging.warn("Discarding unknown feed: %s", feed_url)
 
         return http.HttpResponse(status=204)
