@@ -41,3 +41,7 @@ OTHER NOTES:
 Blogger publishes the feed (I think) using the
 ``<blog_name>.blogspot.com/feeds/posts/default``. This is what you should
 use as the 'topic_url' when creating your subscription.
+
+Todo:
+  Change to not use the "blog_id" from settings and instead just use the subscription
+  topic_url.
