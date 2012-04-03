@@ -42,6 +42,11 @@ Blogger publishes the feed (I think) using the
 ``<blog_name>.blogspot.com/feeds/posts/default``. This is what you should
 use as the 'topic_url' when creating your subscription.
 
+There is a template tag to provide a template with recent posts that
+required Django>=1.4 because it uses the new assignment tag.
+
 Todo:
-  Change to not use the "blog_id" from settings and instead just use the subscription
-  topic_url.
+  Change management commands to not use the "blog_id" from settings and instead
+  just use the subscription topic_url.
+
+  todo: in the admin, display the blog post content as safe instead of raw html.
