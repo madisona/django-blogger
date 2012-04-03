@@ -188,6 +188,18 @@ class BloggerPostModelTests(TestCase):
 
             self.assertEqual([post6, post5, post4, post3, post2], list(models.BloggerPost.get_latest_posts()))
 
+    def test_get_latest_posts_returns_posts_requested(self):
+        now = datetime.datetime.now()
+
+        models.BloggerPost.objects.create(post_id='1', title="post 1", published=now - datetime.timedelta(hours=5), updated=now)
+        models.BloggerPost.objects.create(post_id='2', title="post 2", published=now - datetime.timedelta(hours=4), updated=now)
+        models.BloggerPost.objects.create(post_id='3', title="post 3", published=now - datetime.timedelta(hours=3), updated=now)
+        models.BloggerPost.objects.create(post_id='4', title="post 4", published=now - datetime.timedelta(hours=2), updated=now)
+        post5 = models.BloggerPost.objects.create(post_id='5', title="post 5", published=now - datetime.timedelta(hours=1), updated=now)
+        post6 = models.BloggerPost.objects.create(post_id='6', title="post 6", published=now, updated=now)
+
+        self.assertEqual([post6, post5], list(models.BloggerPost.get_latest_posts(2)))
+
 class SyncBlogManagementTests(TestCase):
 
     @mock.patch('feedparser.parse')

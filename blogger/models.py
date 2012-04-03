@@ -104,8 +104,9 @@ class BloggerPost(models.Model):
         return created
 
     @classmethod
-    def get_latest_posts(cls):
-        return cls.objects.all()[:config.recent_post_count]
+    def get_latest_posts(cls, cnt=None):
+        cnt = cnt or config.recent_post_count
+        return cls.objects.all()[:cnt]
 
 
 class HubbubSubscription(models.Model):
