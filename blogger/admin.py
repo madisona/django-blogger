@@ -11,14 +11,9 @@ class PostAdmin(admin.ModelAdmin):
         return False
 
 class HubbubSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ['topic_url', 'callback_url', 'verified', 'created', 'updated']
-    readonly_fields = ['topic_url', 'host_name', 'verify_token']
+    list_display = ['topic_url', 'callback_url', 'is_verified', 'created', 'updated']
+    readonly_fields = ['verify_token', 'is_verified']
 
-    def has_add_permission(self, request):
-        """
-        Don't allow adding through the admin... Only the management command.
-        """
-        return False
 
 admin.site.register(BloggerPost, PostAdmin)
 admin.site.register(HubbubSubscription, HubbubSubscriptionAdmin)
