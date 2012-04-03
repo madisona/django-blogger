@@ -2,13 +2,27 @@
 import datetime
 import feedparser
 import mock
+import random
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test import TestCase
+from django import template
 
 from blogger import models, config
 from blogger.management.commands import syncblog
+
+def make_blog_post(save=True, **kwargs):
+    model = models.BloggerPost(
+        post_id=kwargs.get('post_id', str(random.random())),
+        title=kwargs.get('title', 'Post Title'),
+        published=kwargs.get('published', datetime.datetime.now()),
+        updated=kwargs.get('updated', datetime.datetime.now()),
+        content=kwargs.get('content', 'Old Post Content'),
+    )
+    if save:
+        model.save()
+    return model
 
 class GeneralModelFuncTests(TestCase):
 
@@ -390,3 +404,20 @@ class PostListViewTests(TestCase):
 
         self.assertEqual(config, response.context['config'])
         self.assertEqual(settings.DEBUG, response.context['dev_mode'])
+
+
+class TemplateTagTests(TestCase):
+
+    def test_recent_posts_tag(self):
+        one = make_blog_post(published=datetime.date(2012,1,1))
+        two = make_blog_post(published=datetime.date(2012,2,1))
+        three = make_blog_post(published=datetime.date(2012,3,1))
+
+        t = template.Template("""{% load blogger_tags %}
+            {% get_recent_posts 2 as posts %}
+            {% for post in posts %}
+              <h1>{{ post.title }}</h1>
+            {% endfor %}
+        """)
+        result = t.render(template.Context({}))
+        self.assertHTMLEqual("<h1>{0.title}</h1><h1>{1.title}</h1>".format(three, two), result)
