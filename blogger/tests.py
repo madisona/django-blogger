@@ -198,6 +198,8 @@ class SyncBlogManagementTests(TestCase):
         parse.assert_called_once_with(config.blogger_feed_url)
         sync_feed.assert_called_once_with(parse.return_value)
 
+
+@mock.patch.object(models.HubbubSubscription, 'send_subscription_request', mock.Mock())
 class PubSubHubbubCallbackHandlerTests(TestCase):
 
     def setUp(self):
@@ -267,7 +269,6 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
         s = models.HubbubSubscription.get_by_feed_url(topic_url)
         self.assertEqual(True, s.is_verified)
 
-
     def test_returns_bad_request_when_token_doesnt_match(self):
         topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
         verify_token = "secret_token"
@@ -332,6 +333,33 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
         self.assertEqual("example.com/edit/1", post_one.link_edit)
         self.assertEqual("example.com/self/1", post_one.link_self)
         self.assertEqual("example.com/alternate/1", post_one.link_alternate)
+
+
+class HubbubSubscriptionModelTests(TestCase):
+
+    @mock.patch.object(models.HubbubSubscription, 'send_subscription_request', mock.Mock())
+    def test_adds_verify_token_on_new_save(self):
+        subscription = models.HubbubSubscription.objects.create(topic_url="http://www.example.com")
+        self.assertTrue(subscription.verify_token)
+
+    @mock.patch.object(models.HubbubSubscription, 'send_subscription_request', mock.Mock())
+    def test_does_not_add_verify_token_when_already_present(self):
+        verify_token = "some-token"
+        subscription = models.HubbubSubscription.objects.create(topic_url="http://www.example.com", verify_token=verify_token)
+        self.assertEqual(verify_token, subscription.verify_token)
+
+    @mock.patch.object(models.HubbubSubscription, 'send_subscription_request')
+    def test_sends_subscription_request_when_new_model_created(self, send_request):
+        m = models.HubbubSubscription(topic_url="http://www.example.com")
+        models.subscription_handler(m.__class__, instance=m, created=True)
+        send_request.assert_called_once_with()
+
+    @mock.patch.object(models.HubbubSubscription, 'send_subscription_request')
+    def test_only_sends_subscription_on_first_save(self, send_request):
+        m = models.HubbubSubscription(topic_url="http://www.example.com")
+        models.subscription_handler(m.__class__, instance=m, created=False)
+        self.assertFalse(send_request.called)
+
 
 class PostDetailViewTests(TestCase):
 

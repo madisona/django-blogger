@@ -9,6 +9,7 @@ import urllib2
 
 from django.core.urlresolvers import reverse
 from django.db import models
+from django.dispatch import receiver
 from django.template.defaultfilters import striptags, slugify
 
 from blogger import config
@@ -121,7 +122,8 @@ class HubbubSubscription(models.Model):
         return unicode(self.topic_url)
 
     def save(self, **kwargs):
-        self.verify_token = sha256(self.topic_url + str(datetime.now())).hexdigest()
+        if not self.verify_token:
+            self.verify_token = sha256(self.topic_url + str(datetime.now())).hexdigest()
         super(HubbubSubscription, self).save(**kwargs)
 
 
@@ -169,3 +171,12 @@ class HubbubSubscription(models.Model):
         except cls.DoesNotExist:
             return None
 
+
+@receiver(models.signals.post_save, sender=HubbubSubscription, dispatch_uid="HubbubRegister")
+def subscription_handler(sender, **kwargs):
+    """
+    When a subscription is first created, send the subscription request to PubSubHubbub.
+    """
+    if kwargs['created']:
+        instance = kwargs['instance']
+        instance.send_subscription_request()
