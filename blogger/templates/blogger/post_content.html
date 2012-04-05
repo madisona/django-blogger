@@ -1,8 +1,13 @@
 <div class="blogpost">
-    <h2 class="date-header">{{ object.published|date:"l, F j, Y" }}<h2>
-    <h3 class="post-title">{{ object.title }}</h3>
+    <h2 class="date-header">{{ object.published|date:"l, F j, Y" }}</h2>
+    <h3 class="post-title">
+      {% if object.get_absolute_url == request.path %}
+        {{ object.title }}
+      {% else %}
+        <a href="{{ object.get_absolute_url }}">{{ object.title }}</a>
+      {% endif %}</h3>
     <div class="post-body">
-    {{ object.content|safe }}
+      {{ object.content|safe }}
     </div>
     <p class="post-footer">
       posted by {{ object.author }} at <a href="{{ object.get_absolute_url }}">{{ object.published|date:"P" }}</a>
