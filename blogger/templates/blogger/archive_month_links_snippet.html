@@ -1,0 +1,5 @@
+<ul class="linklist">
+  {% for d in dates reversed %}
+    <li><a href="{% url blogger:archive_month year=d.year month=d.month %}">{{ d|date:"F Y" }}</a></li>
+  {% endfor %}
+</ul>
