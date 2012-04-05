@@ -28,13 +28,13 @@ class PostDetail(PostContextMixin, generic.DetailView):
     model = models.BloggerPost
 
 
-class ArchiveMonth(generic.MonthArchiveView):
+class ArchiveMonth(PostContextMixin, generic.MonthArchiveView):
     model = models.BloggerPost
     date_field = 'published'
     month_format = "%m"
 
 
-class ArchiveYear(generic.YearArchiveView):
+class ArchiveYear(PostContextMixin, generic.YearArchiveView):
     model = models.BloggerPost
     date_field = 'published'
     make_object_list = True
