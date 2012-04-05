@@ -32,10 +32,10 @@ class BloggerPost(models.Model):
     """
     The cloned blog posts are stored here.
     """
-    slug = models.SlugField(blank=True)
+    slug = models.SlugField(blank=True, db_index=True)
     post_id = models.CharField(max_length=255, primary_key=True)
-    published = models.DateTimeField()
-    updated = models.DateTimeField()
+    published = models.DateTimeField(db_index=True)
+    updated = models.DateTimeField(db_index=True)
     title = models.CharField(max_length=255)
     content = models.TextField()
     content_type = models.CharField(max_length=100, default='html')
