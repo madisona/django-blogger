@@ -48,5 +48,3 @@ required Django>=1.4 because it uses the new assignment tag.
 Todo:
   Change management commands to not use the "blog_id" from settings and instead
   just use the subscription topic_url.
-
-  todo: in the admin, display the blog post content as safe instead of raw html.

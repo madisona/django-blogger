@@ -1,25 +1,43 @@
 
 from django.contrib import admin
 from django.contrib import messages
+from django.db.models import TextField
+from django.forms.widgets import Widget
+from django.utils.safestring import mark_safe
 
 import feedparser
 from blogger.models import BloggerPost, HubbubSubscription, sync_blog_feed
 
+class BlogPostWidget(Widget):
+    """
+    Shows the rendered html in the admin.
+    """
+    def render(self, name, value, attrs=None):
+        value = value or ''
+        return mark_safe(u"<div class='blogpost'>{0}</div>".format(value))
+
+
 class PostAdmin(admin.ModelAdmin):
     list_display = ('title', 'author', 'published',)
     list_filter = ('published', 'author',)
-    exclude = ('content_type',)
+    fields = (
+        'slug', 'published', 'updated', 'title', 'content',
+        'link_edit', 'link_self', 'link_alternate', 'author'
+    )
+
+    formfield_overrides = {
+        TextField: {'widget': BlogPostWidget}
+    }
 
     def has_add_permission(self, request):
         return False
 
     def get_readonly_fields(self, request, obj=None):
         # all fields come from feed, so nothing should be editable.
-        return [
-            'slug', 'post_id', 'published',
-            'updated', 'title', 'content',
+        return (
+            'slug', 'published', 'updated', 'title',
             'link_edit', 'link_self', 'link_alternate', 'author'
-        ]
+        )
 
 def sync_subscriptions(modeladmin, request, queryset):
     new_posts = 0

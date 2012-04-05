@@ -6,6 +6,6 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     # Examples:
-    (r'^', include('blogger.urls', namespace='blogger')),
     url(r'^admin/', include(admin.site.urls)),
+    (r'^', include('blogger.urls', namespace='blogger')),
 )
