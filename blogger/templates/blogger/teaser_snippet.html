@@ -1,6 +1,6 @@
 <div id="blog-teaser-posts">
   {% for post in blog_posts %}
-    {% url blogger:post post.slug as post_url %}
+    {% url 'blogger:post' post.slug as post_url %}
     <div class="blog-post">
       <h3 class="blog-title"><a href="{{ post_url }}">{{ post.title }}</a></h3>
       <span class="blog-published">{{ post.published }}</span>

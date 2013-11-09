@@ -64,12 +64,12 @@ class PubSubHubbub(generic.TemplateView):
         Handles Feed update from hub server. Updates when necessary
         and ignores bad requests.
         """
-        feed = feedparser.parse(request.raw_post_data)
+        feed = feedparser.parse(request.body)
 
         feed_links = models.get_all_feed_links(feed.feed.links)
         subscription = models.HubbubSubscription.get_by_url_list(feed_links)
         if subscription:
-            models.sync_blog_feed(feedparser.parse(request.raw_post_data))
+            models.sync_blog_feed(feedparser.parse(request.body))
         else:
             feed_url = models.get_feed_link(feed.feed.links, 'self')
             logging.warn("Discarding unknown feed: %s", feed_url)

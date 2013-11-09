@@ -39,9 +39,9 @@ class BloggerPost(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField()
     content_type = models.CharField(max_length=100, default='html')
-    link_edit = models.URLField(verify_exists=False, blank=True)
-    link_self = models.URLField(verify_exists=False, blank=True)
-    link_alternate = models.URLField(verify_exists=False, blank=True)
+    link_edit = models.URLField(blank=True)
+    link_self = models.URLField(blank=True)
+    link_alternate = models.URLField(blank=True)
     author = models.CharField(max_length=255, blank=True)
 
     objects = models.Manager()
@@ -115,7 +115,7 @@ class HubbubSubscription(models.Model):
     host_name = models.CharField(max_length=100, help_text="Host name of subscribing blog.")
     verify_token = models.CharField(max_length=100)
 
-    is_verified = models.BooleanField()
+    is_verified = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

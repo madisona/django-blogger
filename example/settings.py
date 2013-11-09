@@ -12,6 +12,7 @@ for path in (grandparent, parent):
         
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
+SECRET_KEY = 'sym^$ot#e&94&87k65kj)x*5gdxw3941&3%7pln&1k5pn1t@qa'
 
 DATABASES = {
     'default': {
