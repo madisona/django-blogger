@@ -104,7 +104,7 @@ class BloggerPost(models.Model):
         return created
 
     @classmethod
-    def get_latest_posts(cls, cnt=5):
+    def get_latest_posts(cls, cnt=None):
         cnt = cnt or config.recent_post_count
         return cls.objects.all()[:cnt]
 
