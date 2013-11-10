@@ -13,10 +13,12 @@ from blogger import models, config
 class PostContextMixin(object):
 
     def get_context_data(self, **kwargs):
-        return dict({
+        ctx = super(PostContextMixin, self).get_context_data(**kwargs)
+        ctx.update({
             'config': config,
             'dev_mode': settings.DEBUG,
-        }, **kwargs)
+        })
+        return ctx
 
 
 class PostList(PostContextMixin, generic.ListView):
