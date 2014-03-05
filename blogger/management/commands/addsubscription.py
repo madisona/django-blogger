@@ -2,7 +2,7 @@
 import re
 import sys
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from blogger import models, config
 
@@ -35,12 +35,12 @@ class Command(BaseCommand):
             subscription.save()
         response = subscription.send_subscription_request()
         if response is True:
-            sys.stdout.write(
+            self.stdout.write(
                 'Created pubsubhubbub subscription for %s\n'
                 'to be handled by the callback url %s\n' % (topic_url, subscription.callback_url)
             )
         else:
-            sys.stdout.write(
+            raise CommandError(
                 'Subscription request for %s\n'
                 'to be handled by the callback url %s was not created successfully.\n'
                 'Please check your logs\n' % (topic_url, subscription.callback_url)
