@@ -58,6 +58,8 @@ INSTALLED_APPS = (
 )
 INTERNAL_IPS = ('127.0.0.1',)
 
+SOUTH_TESTS_MIGRATE = False
+
 BLOGGER_OPTIONS = {
     'blog_id': '10861780', # official google blog
     'disqus_forum': '', # add your disqus shortname here if you want disqus

@@ -14,7 +14,7 @@ setup(
     long_description=open("README.txt", 'r').read(),
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['feedparser', 'django>1.5'],
+    install_requires=['feedparser==5.1.3', 'django>1.5', 'BeautifulSoup==3.2.1'],
     test_requirements=['mock', 'django-debug-toolbar', 'south'],
     zip_safe=False,
     classifiers=[

@@ -12,6 +12,7 @@ from django import template
 from blogger import models, config
 from blogger.management.commands import syncblog
 
+
 def make_blog_post(save=True, **kwargs):
     model = models.BloggerPost(
         post_id=kwargs.get('post_id', str(random.random())),
@@ -23,6 +24,7 @@ def make_blog_post(save=True, **kwargs):
     if save:
         model.save()
     return model
+
 
 class GeneralModelFuncTests(TestCase):
 
@@ -37,7 +39,11 @@ class GeneralModelFuncTests(TestCase):
                 <author><name>Aaron Madison</name></author>
                 <published>2011-07-24T13:15:30.000-07:00</published>
                 <updated>2011-07-24T13:15:30.000-07:00</updated>
-                <content type="html">This is Post One</content>
+                <content type="html">
+                    <h1>This is Post One</h1>
+                    <img src="http://one-image.jpg" />
+                    <p>and some content</p><img src="http://another-one-image.png" />
+                </content>
                 <link rel="edit" href="example.com/edit/1" />
                 <link rel="self" href="example.com/self/1" />
                 <link rel="alternate" href="example.com/alternate/1" />
@@ -48,7 +54,10 @@ class GeneralModelFuncTests(TestCase):
                 <author><name>Aaron Madison</name></author>
                 <published>2011-07-24T13:15:30.000-07:00</published>
                 <updated>2011-07-24T13:15:30.000-07:00</updated>
-                <content type="html">This is Post Two</content>
+                <content type="html">
+                    <h1>This is Post Two</h1>
+                    <p>and some content</p>
+                </content>
                 <link rel="edit" href="example.com/edit/2" />
                 <link rel="self" href="example.com/self/2" />
                 <link rel="alternate" href="example.com/alternate/2" />
@@ -80,25 +89,30 @@ class GeneralModelFuncTests(TestCase):
         self.assertEqual("tag:blogger.com,1999:blog-11111111", post_one.post_id)
         self.assertEqual("Post One", post_one.title)
         self.assertEqual("Aaron Madison", post_one.author)
-        self.assertEqual("This is Post One", post_one.content)
+        self.assertHTMLEqual("""<h1>This is Post One</h1>
+                    <img src="http://one-image.jpg" />
+                    <p>and some content</p><img src="http://another-one-image.png" />""", post_one.content)
         self.assertEqual("html", post_one.content_type)
 #        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_one.published)
 #        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_one.updated)
         self.assertEqual("example.com/edit/1", post_one.link_edit)
         self.assertEqual("example.com/self/1", post_one.link_self)
         self.assertEqual("example.com/alternate/1", post_one.link_alternate)
+        self.assertEqual("http://one-image.jpg", post_one.first_image_url)
 
         post_two = models.BloggerPost.objects.get(post_id=self.post_id_two)
         self.assertEqual("tag:blogger.com,1999:blog-22222222", post_two.post_id)
         self.assertEqual("Post Two", post_two.title)
         self.assertEqual("Aaron Madison", post_two.author)
-        self.assertEqual("This is Post Two", post_two.content)
+        self.assertHTMLEqual("""<h1>This is Post Two</h1>
+                    <p>and some content</p>""", post_two.content)
         self.assertEqual("html", post_two.content_type)
 #        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_two.published)
 #        self.assertEqual(datetime.datetime(2011,7,24,13,15,30), post_two.updated)
         self.assertEqual("example.com/edit/2", post_two.link_edit)
         self.assertEqual("example.com/self/2", post_two.link_self)
         self.assertEqual("example.com/alternate/2", post_two.link_alternate)
+        self.assertEqual("", post_two.first_image_url)
 
     def test_sync_blog_feed_updates_entries_when_they_already_exist(self):
         models.BloggerPost.objects.create(
@@ -116,7 +130,9 @@ class GeneralModelFuncTests(TestCase):
         self.assertEqual(2, models.BloggerPost.objects.all().count()) # only_added_one
         updated_post = models.BloggerPost.objects.get(post_id=self.post_id_one)
         self.assertEqual("Post One", updated_post.title)
-        self.assertEqual("This is Post One", updated_post.content)
+        self.assertHTMLEqual("""<h1>This is Post One</h1>
+                    <img src="http://one-image.jpg" />
+                    <p>and some content</p><img src="http://another-one-image.png" />""", updated_post.content)
 
 
 class BloggerPostModelTests(TestCase):
@@ -213,6 +229,7 @@ class BloggerPostModelTests(TestCase):
         post6 = models.BloggerPost.objects.create(post_id='6', title="post 6", published=now, updated=now)
 
         self.assertEqual([post6, post5], list(models.BloggerPost.get_latest_posts(2)))
+
 
 class SyncBlogManagementTests(TestCase):
 
@@ -396,6 +413,7 @@ class PostDetailViewTests(TestCase):
 
         self.assertEqual(config, response.context['config'])
         self.assertEqual(settings.DEBUG, response.context['dev_mode'])
+
 
 class PostListViewTests(TestCase):
 

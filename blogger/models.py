@@ -7,6 +7,7 @@ import traceback
 import urllib
 import urllib2
 
+from BeautifulSoup import BeautifulSoup
 from django.core.urlresolvers import reverse
 from django.db import models
 from django.dispatch import receiver
@@ -20,6 +21,11 @@ def get_feed_link(links, param):
 
 def get_all_feed_links(links):
     return [link['href'] for link in links]
+
+def get_first_image_url(entry_html):
+    tree = BeautifulSoup(entry_html)
+    first_image = tree.find('img')
+    return first_image.get('src') if first_image else ""
 
 def sync_blog_feed(feed):
     new_posts = 0
@@ -39,6 +45,7 @@ class BloggerPost(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField()
     content_type = models.CharField(max_length=100, default='html')
+    first_image_url = models.URLField(blank=True)
     link_edit = models.URLField(blank=True)
     link_self = models.URLField(blank=True)
     link_alternate = models.URLField(blank=True)
@@ -87,6 +94,7 @@ class BloggerPost(models.Model):
             title = entry.title,
             author = entry.author_detail.get('name'),
             content = entry.summary,
+            first_image_url = get_first_image_url(entry.summary),
             link_edit=get_feed_link(entry.links, 'edit'),
             link_self=get_feed_link(entry.links, 'self'),
             link_alternate=get_feed_link(entry.links, 'alternate'),
