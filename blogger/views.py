@@ -51,15 +51,15 @@ class PubSubHubbub(generic.TemplateView):
         """
         subscription = models.HubbubSubscription.get_by_feed_url(request.GET.get('hub.topic', ''))
         if request.GET.get('hub.mode') not in ('subscribe', 'unsubscribe'):
-            return http.HttpResponseBadRequest('invalid mode', mimetype='text/plain')
+            return http.HttpResponseBadRequest('invalid mode', content_type='text/plain')
         elif not subscription:
-            return http.HttpResponseBadRequest('subscription not found', mimetype='text/plain')
+            return http.HttpResponseBadRequest('subscription not found', content_type='text/plain')
         elif request.GET.get('hub.verify_token') != subscription.verify_token:
-            return http.HttpResponseBadRequest('data did not match', mimetype='text/plain')
+            return http.HttpResponseBadRequest('data did not match', content_type='text/plain')
 
         subscription.is_verified = True
         subscription.save()
-        return http.HttpResponse(request.GET.get('hub.challenge'), mimetype="text/plain")
+        return http.HttpResponse(request.GET.get('hub.challenge'), content_type="text/plain")
 
     def post(self, request, *args, **kwargs):
         """
