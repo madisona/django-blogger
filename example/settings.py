@@ -45,7 +45,6 @@ TEMPLATE_DIRS = (
 )
 
 INSTALLED_APPS = (
-    'south',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -56,9 +55,6 @@ INSTALLED_APPS = (
     'debug_toolbar',
     'blogger',
 )
-INTERNAL_IPS = ('127.0.0.1',)
-
-SOUTH_TESTS_MIGRATE = False
 
 BLOGGER_OPTIONS = {
     'blog_id': '10861780', # official google blog
