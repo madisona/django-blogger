@@ -8,9 +8,9 @@ install:
   - pip install -r requirements/test.txt
   - pip install -q Django==$DJANGO_VERSION
 script:
-  - coverage run --source=django_google_maps manage.py test
+  - coverage run --source=blogger example/manage.py test
   - coverage report --show-missing
-  - flake8 django_google_maps --max-line-length=120 --max-complexity=4
+  - flake8 blogger
 
 env:
   - DJANGO_VERSION=1.8.18
