@@ -1,9 +1,9 @@
-
 from django import template
 
 from blogger import models
 
 register = template.Library()
+
 
 @register.assignment_tag
 def get_recent_posts(cnt=None):

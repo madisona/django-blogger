@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from hashlib import sha256
 import logging
@@ -15,24 +14,32 @@ from django.template.defaultfilters import striptags, slugify
 
 from blogger import config
 
+
 def get_feed_link(links, param):
-    try: return (link['href'] for link in links if link['rel'] == param).next()
-    except StopIteration: return None
+    try:
+        return (link['href'] for link in links if link['rel'] == param).next()
+    except StopIteration:
+        return None
+
 
 def get_all_feed_links(links):
     return [link['href'] for link in links]
+
 
 def get_first_image_url(entry_html):
     tree = BeautifulSoup(entry_html)
     first_image = tree.find('img')
     return first_image.get('src') if first_image else ""
 
+
 def sync_blog_feed(feed):
     new_posts = 0
     for entry in feed.entries:
         created = BloggerPost.from_feed(entry)
-        if created: new_posts += 1
+        if created:
+            new_posts += 1
     return new_posts
+
 
 class BloggerPost(models.Model):
     """
@@ -91,15 +98,15 @@ class BloggerPost(models.Model):
         """
         post_id = entry.id
         post_data = dict(
-            title = entry.title,
-            author = entry.author_detail.get('name'),
-            content = entry.summary,
-            first_image_url = get_first_image_url(entry.summary),
+            title=entry.title,
+            author=entry.author_detail.get('name'),
+            content=entry.summary,
+            first_image_url=get_first_image_url(entry.summary),
             link_edit=get_feed_link(entry.links, 'edit'),
             link_self=get_feed_link(entry.links, 'self'),
             link_alternate=get_feed_link(entry.links, 'alternate'),
-            published = datetime.fromtimestamp(mktime(entry.published_parsed)),
-            updated = datetime.fromtimestamp(mktime(entry.updated_parsed)),
+            published=datetime.fromtimestamp(mktime(entry.published_parsed)),
+            updated=datetime.fromtimestamp(mktime(entry.updated_parsed)),
         )
         post, created = BloggerPost.objects.get_or_create(
             post_id=post_id,
@@ -135,7 +142,6 @@ class HubbubSubscription(models.Model):
             self.verify_token = sha256(self.topic_url + str(datetime.now())).hexdigest()
         super(HubbubSubscription, self).save(**kwargs)
 
-
     def delete(self, **kwargs):
         self.send_subscription_request(mode="unsubscribe")
         super(HubbubSubscription, self).delete(**kwargs)
@@ -156,9 +162,10 @@ class HubbubSubscription(models.Model):
             # not sure what to inspect or what kind of feedback is useful here
             # this always fails when hostname is not publicly accessible.
             error_traceback = traceback.format_exc()
-            logging.debug('Error encountered sending subscription '
-                          'to %s for callback %s:\n%s',
-                          self.topic_url, callback_url, error_traceback)
+            logging.debug(
+                'Error encountered sending subscription '
+                'to %s for callback %s:\n%s', self.topic_url, callback_url, error_traceback
+            )
             return False
         return True
 

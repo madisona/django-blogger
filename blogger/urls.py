@@ -1,4 +1,3 @@
-
 from django.conf.urls import url
 from django.views.decorators.csrf import csrf_exempt
 
@@ -12,6 +11,5 @@ urlpatterns = [
     url(r'^(?P<year>\d{4})/$', views.ArchiveYear.as_view(), name='archive_year'),
     url(r'^(?P<year>\d{4})/(?P<month>\w+)/$', views.ArchiveMonth.as_view(), name='archive_month'),
     url(r'^(?P<slug>[\w/-]+)/$', views.PostDetail.as_view(), name='post'),
-
     url(r'^$', views.PostList.as_view(), name='home'),
 ]
