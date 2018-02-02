@@ -14,8 +14,8 @@ setup(
     long_description=open("README.txt", 'r').read(),
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['feedparser==5.1.3', 'django>=1.7,<1.9', 'BeautifulSoup==3.2.1'],
-    test_requirements=['mock', 'django-debug-toolbar>=1.3.0,<1.4.0'],
+    install_requires=['feedparser==5.2.1', 'django>=1.8,<2.0', 'BeautifulSoup4'],
+    test_requirements=['mock'],
     zip_safe=False,
     classifiers=[
         "Development Status :: 4 - Beta",

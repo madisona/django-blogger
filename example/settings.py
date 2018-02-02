@@ -23,14 +23,29 @@ DATABASES = {
 
 STATIC_URL = '/static/'
 
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-#     'django.template.loaders.eggs.Loader',
-)
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            abspath(join(parent, 'templates')),
+        ],
+        'OPTIONS': {
+            'context_processors': [
+                # Insert your TEMPLATE_CONTEXT_PROCESSORS here or use this
+                # list if you haven't customized them:
+                'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.request',
+                'django.contrib.messages.context_processors.messages',
+            ],
+            'loaders':
+                ('django.template.loaders.filesystem.Loader',
+                 'django.template.loaders.app_directories.Loader',)
+        },
+    },
+]
+
 
 MIDDLEWARE_CLASSES = (
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -40,9 +55,6 @@ MIDDLEWARE_CLASSES = (
 
 ROOT_URLCONF = 'example.urls'
 
-TEMPLATE_DIRS = (
-    abspath(join(parent, 'templates')),
-)
 
 INSTALLED_APPS = (
     'django.contrib.auth',
@@ -52,7 +64,6 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 
     'django.contrib.admin',
-    'debug_toolbar',
     'blogger',
 )
 
