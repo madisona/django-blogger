@@ -1,6 +1,6 @@
 import re
 import sys
-
+from six.moves import input
 from django.core.management.base import BaseCommand, CommandError
 
 from blogger import models, config
@@ -24,7 +24,7 @@ class Command(BaseCommand):
         while not is_valid_hostname(host_name):
             if host_name:
                 sys.stdout.write("%s is not a valid host name\n\n" % host_name)
-            host_name = raw_input("Please enter your host name: ")
+            host_name = input("Please enter your host name: ")
         topic_url = config.blogger_feed_url
 
         subscription, created = models.HubbubSubscription.objects.get_or_create(
