@@ -309,7 +309,7 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
             }
         )
         self.assertEqual(200, response.status_code)
-        self.assertEqual("a challenge", response.content)
+        self.assertEqual(b"a challenge", response.content)
 
     def test_returns_challenge_content_when_mode_is_subscribe_and_verify_token_matches(self):
         topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
@@ -325,7 +325,7 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
             }
         )
         self.assertEqual(200, response.status_code)
-        self.assertEqual("a challenge", response.content)
+        self.assertEqual(b"a challenge", response.content)
 
     def test_marks_subscription_as_verified_when_receives_valid_subscription_request(self):
         topic_url = "http://buzz.blogspot.com/feeds/posts/default/"
@@ -364,7 +364,7 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
             }
         )
         self.assertEqual(400, response.status_code)
-        self.assertEqual("data did not match", response.content)
+        self.assertEqual(b"data did not match", response.content)
 
     def test_returns_bad_request_when_subscription_not_found(self):
         response = self.client.get(
@@ -377,7 +377,7 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
             }
         )
         self.assertEqual(400, response.status_code)
-        self.assertEqual("subscription not found", response.content)
+        self.assertEqual(b"subscription not found", response.content)
 
     def test_returns_bad_request_when_mode_not_subscribe_or_unsubscribe(self):
         response = self.client.get(
@@ -390,7 +390,7 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
             }
         )
         self.assertEqual(400, response.status_code)
-        self.assertEqual("invalid mode", response.content)
+        self.assertEqual(b"invalid mode", response.content)
 
     @mock.patch('blogger.models.sync_blog_feed')
     def test_returns_response_but_no_action_when_subscription_not_found(self, sync_blog_feed):

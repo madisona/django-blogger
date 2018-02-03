@@ -4,7 +4,11 @@ import logging
 from time import mktime
 import traceback
 import urllib
-import urllib2
+
+try:
+    from urllib2 import urlopen, HTTPError
+except ImportError:
+    from urllib.request import urlopen, HTTPError
 
 from bs4 import BeautifulSoup
 from django.core.urlresolvers import reverse
@@ -17,7 +21,7 @@ from blogger import config
 
 def get_feed_link(links, param):
     try:
-        return (link['href'] for link in links if link['rel'] == param).next()
+        return next(link['href'] for link in links if link['rel'] == param)
     except StopIteration:
         return None
 
@@ -27,7 +31,7 @@ def get_all_feed_links(links):
 
 
 def get_first_image_url(entry_html):
-    tree = BeautifulSoup(entry_html)
+    tree = BeautifulSoup(entry_html, 'html.parser')
     first_image = tree.find('img')
     return first_image.get('src') if first_image else ""
 
@@ -139,7 +143,8 @@ class HubbubSubscription(models.Model):
 
     def save(self, **kwargs):
         if not self.verify_token:
-            self.verify_token = sha256(self.topic_url + str(datetime.now())).hexdigest()
+            token_string = self.topic_url + str(datetime.now())
+            self.verify_token = sha256(token_string.encode()).hexdigest()
         super(HubbubSubscription, self).save(**kwargs)
 
     def delete(self, **kwargs):
@@ -157,8 +162,8 @@ class HubbubSubscription(models.Model):
         }
 
         try:
-            urllib2.urlopen(config.hubbub_hub_url, urllib.urlencode(subscribe_args))
-        except urllib2.HTTPError:
+            urlopen(config.hubbub_hub_url, urllib.urlencode(subscribe_args))
+        except HTTPError:
             # not sure what to inspect or what kind of feedback is useful here
             # this always fails when hostname is not publicly accessible.
             error_traceback = traceback.format_exc()
