@@ -86,7 +86,7 @@ class GeneralModelFuncTests(TestCase):
         new_posts = models.sync_blog_feed(feedparser.parse(self.raw_feed))
         self.assertEqual(2, new_posts)
 
-        #todo: test updated and published times... they're returned as a time struct
+        # todo: test updated and published times... they're returned as a time struct
         post_one = models.BloggerPost.objects.get(post_id=self.post_id_one)
         self.assertEqual("tag:blogger.com,1999:blog-11111111", post_one.post_id)
         self.assertEqual("Post One", post_one.title)
@@ -279,7 +279,7 @@ class PubSubHubbubCallbackHandlerTests(TestCase):
         self.xml_data = """<?xml version='1.0' encoding='UTF-8'?>
         <feed>
             <link rel='self' type='application/atom+xml' href='http://buzz.blogspot.com/feeds/posts/default/' />
-            <link rel='http://schemas.google.com/g/2005#post' type='application/atom+xml' href='http://www.blogger.com/feeds/' />
+            <link rel='http://schemas.google.com/g/2005#post' type='application/atom+xml' href='http://www.blogger.com/feeds/' />  # noqa: E501
             <link rel='alternate' type='text/html' href='http://www.blogspot.com/' />
             <link rel='next' type='application/atom+xml' href='http://www.blogger.com/feeds/' />
             <entry>
@@ -472,7 +472,7 @@ class PostListViewTests(TestCase):
 class TemplateTagTests(TestCase):
 
     def test_recent_posts_tag(self):
-        one = make_blog_post(published=datetime.date(2012, 1, 1))
+        make_blog_post(published=datetime.date(2012, 1, 1))
         two = make_blog_post(published=datetime.date(2012, 2, 1))
         three = make_blog_post(published=datetime.date(2012, 3, 1))
 

@@ -11,7 +11,7 @@ install:
 script:
   - coverage run --source=blogger example/manage.py test
   - coverage report --show-missing
-  - flake8 blogger
+  - flake8 blogger --exclude=blogger/south_migrations/*,blogger/migrations* --max-line-length=120
 
 env:
   - DJANGO_VERSION=">=1.8,<1.9"
