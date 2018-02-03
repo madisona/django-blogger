@@ -15,6 +15,7 @@ from django.core.urlresolvers import reverse
 from django.db import models
 from django.dispatch import receiver
 from django.template.defaultfilters import striptags, slugify
+from django.utils.encoding import python_2_unicode_compatible
 
 from blogger import config
 
@@ -45,6 +46,7 @@ def sync_blog_feed(feed):
     return new_posts
 
 
+@python_2_unicode_compatible
 class BloggerPost(models.Model):
     """
     The cloned blog posts are stored here.
@@ -67,8 +69,8 @@ class BloggerPost(models.Model):
     class Meta(object):
         ordering = ('-published', '-updated')
 
-    def __unicode__(self):
-        return unicode(self.title)
+    def __str__(self):
+        return self.title
 
     def save(self, *args, **kwargs):
         self.slug = "%s/%s" % (self.published.strftime("%Y/%m"), slugify(self.title))
@@ -128,6 +130,7 @@ class BloggerPost(models.Model):
         return cls.objects.all()[:cnt]
 
 
+@python_2_unicode_compatible
 class HubbubSubscription(models.Model):
     topic_url = models.URLField(primary_key=True, help_text="URL of feed you're subscribing to.")
 
@@ -138,8 +141,8 @@ class HubbubSubscription(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
-    def __unicode__(self):
-        return unicode(self.topic_url)
+    def __str__(self):
+        return self.topic_url
 
     def save(self, **kwargs):
         if not self.verify_token:
