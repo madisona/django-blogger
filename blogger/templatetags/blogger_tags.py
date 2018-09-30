@@ -5,7 +5,7 @@ from blogger import models
 register = template.Library()
 
 
-@register.assignment_tag
+@register.simple_tag
 def get_recent_posts(cnt=None):
     return models.BloggerPost.get_latest_posts(cnt)
 

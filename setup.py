@@ -14,7 +14,7 @@ setup(
     long_description=open("README.txt", 'r').read(),
     packages=find_packages(),
     include_package_data=True,
-    install_requires=open('requirements/requirements.txt').read().split('\n'),
+    install_requires=open('requirements/requirements.txt').read().splitlines(),
     tests_require=open('requirements/test.txt').read().split('\n'),
     zip_safe=False,
     classifiers=[

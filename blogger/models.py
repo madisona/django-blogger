@@ -11,7 +11,7 @@ except ImportError:
     from urllib.request import urlopen, HTTPError
 
 from bs4 import BeautifulSoup
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db import models
 from django.dispatch import receiver
 from django.template.defaultfilters import striptags, slugify
@@ -92,9 +92,8 @@ class BloggerPost(models.Model):
     def list_content(self):
         return self.teaser if config.show_teaser else self.content
 
-    @models.permalink
     def get_absolute_url(self):
-        return ('blogger:post', [self.slug])
+        return reverse('blogger:post', kwargs={'slug': self.slug})
 
     @staticmethod
     def from_feed(entry):

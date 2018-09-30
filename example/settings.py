@@ -22,6 +22,7 @@ DATABASES = {
 }
 
 STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
 
 TEMPLATES = [
     {
@@ -45,7 +46,7 @@ TEMPLATES = [
 ]
 
 
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
