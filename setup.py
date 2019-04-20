@@ -15,7 +15,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=open('requirements/requirements.txt').read().splitlines(),
-    tests_require=open('requirements/test.txt').read().split('\n'),
+    tests_require=open('requirements/test.txt').read().splitlines(),
     zip_safe=False,
     classifiers=[
         "Development Status :: 4 - Beta",
